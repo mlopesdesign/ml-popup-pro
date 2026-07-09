@@ -55,6 +55,12 @@ if ( ! function_exists( 'sanitize_text_field' ) ) {
 	}
 }
 
+if ( ! function_exists( 'sanitize_textarea_field' ) ) {
+	function sanitize_textarea_field( $str ) {
+		return trim( (string) $str );
+	}
+}
+
 if ( ! function_exists( 'sanitize_key' ) ) {
 	function sanitize_key( $str ) {
 		return preg_replace( '/[^a-z0-9_\-]/', '', strtolower( (string) $str ) );
