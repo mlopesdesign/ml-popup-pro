@@ -1,0 +1,40 @@
+/* ML Popup Pro – menu icon only – loaded on every admin screen */
+#adminmenu li.toplevel_page_ml-popup-pro .wp-menu-image img,
+#adminmenu .toplevel_page_ml-popup-pro .wp-menu-image img{
+  display:block!important;
+  width:20px!important;
+  height:20px!important;
+  max-width:20px!important;
+  max-height:20px!important;
+  padding:7px 0 0!important;
+  opacity:1!important;
+  filter:none!important;
+  -webkit-filter:none!important;
+  object-fit:contain!important;
+}
+
+
+/* Keep the plugin entry readable even when another admin stylesheet overrides WordPress menu states. */
+#adminmenu li.toplevel_page_ml-popup-pro.current > a.menu-top,
+#adminmenu li.toplevel_page_ml-popup-pro.wp-has-current-submenu > a.wp-has-current-submenu,
+#adminmenu li.toplevel_page_ml-popup-pro.opensub > a.menu-top,
+#adminmenu li.toplevel_page_ml-popup-pro > a.menu-top:hover,
+#adminmenu li.toplevel_page_ml-popup-pro > a.menu-top:focus{
+  background:#155e6f!important;
+  color:#fff!important;
+}
+#adminmenu li.toplevel_page_ml-popup-pro.current > a.menu-top .wp-menu-name,
+#adminmenu li.toplevel_page_ml-popup-pro.wp-has-current-submenu > a.wp-has-current-submenu .wp-menu-name,
+#adminmenu li.toplevel_page_ml-popup-pro.opensub > a.menu-top .wp-menu-name,
+#adminmenu li.toplevel_page_ml-popup-pro > a.menu-top:hover .wp-menu-name,
+#adminmenu li.toplevel_page_ml-popup-pro > a.menu-top:focus .wp-menu-name{
+  color:#fff!important;
+}
+#adminmenu li.toplevel_page_ml-popup-pro .wp-submenu a{
+  color:#c3c4c7!important;
+}
+#adminmenu li.toplevel_page_ml-popup-pro .wp-submenu a:hover,
+#adminmenu li.toplevel_page_ml-popup-pro .wp-submenu a:focus,
+#adminmenu li.toplevel_page_ml-popup-pro .wp-submenu li.current a{
+  color:#fff!important;
+}

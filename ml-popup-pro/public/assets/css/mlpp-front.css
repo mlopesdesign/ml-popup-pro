@@ -1,0 +1,59 @@
+/* ML Popup Pro – Frontend v1.0.12 – local only, no CDN */
+.mlpp-ov{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:99990;display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box}
+.mlpp-box{position:relative;max-height:90vh;overflow-y:auto;box-sizing:border-box}
+.mlpp-close{position:absolute;top:10px;right:12px;background:none;border:none;font-size:22px;line-height:1;cursor:pointer;color:inherit;padding:4px 8px;border-radius:8px;opacity:.65;z-index:2}
+.mlpp-close:hover{opacity:1}
+.mlpp-title{margin:0 0 6px;font-size:22px;font-weight:800;line-height:1.2}
+.mlpp-subtitle{margin:0 0 10px;font-size:14px;opacity:.75}
+.mlpp-body{margin:0 0 18px;font-size:14px;line-height:1.6}
+.mlpp-act{display:flex;flex-wrap:wrap;gap:10px}
+.mlpp-content-side{display:flex;align-items:center;gap:22px;min-width:0}
+.mlpp-content-copy{flex:1 1 auto;min-width:0}
+.mlpp-side-img{flex:0 0 42%;width:42%!important;max-width:42%!important;height:auto!important;align-self:center}
+.mlpp-image-link{display:block;max-width:100%;line-height:0;text-decoration:none;cursor:pointer}
+.mlpp-image-link:focus-visible{outline:3px solid currentColor;outline-offset:3px}
+.mlpp-image-link-only{width:100%;height:100%;max-height:100%}
+.mlpp-background-clickable{cursor:pointer}
+.mlpp-box,.mlpp-bottom,.mlpp-slide,.mlpp-full-inner,.mlpp-float{scrollbar-width:none;-ms-overflow-style:none;overscroll-behavior:contain}
+.mlpp-box::-webkit-scrollbar,.mlpp-bottom::-webkit-scrollbar,.mlpp-slide::-webkit-scrollbar,.mlpp-full-inner::-webkit-scrollbar,.mlpp-float::-webkit-scrollbar{display:none;width:0;height:0}
+.mlpp-image-only-popup{align-items:center;justify-content:center;min-width:0;min-height:0}
+.mlpp-image-only-popup>.mlpp-image-link-only{min-width:0;min-height:0;overflow:hidden}
+.mlpp-image-only-popup>.mlpp-image-link-only>.mlpp-img{max-width:100%;max-height:100%}
+.mlpp-btn-p,.mlpp-btn-s{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:0 22px;border-radius:999px;font-weight:700;font-size:14px;text-decoration:none;border:none;cursor:pointer;transition:opacity .15s}
+.mlpp-btn-p:hover,.mlpp-btn-s:hover{opacity:.88}
+
+/* BOTTOM BAR */
+.mlpp-bottom{position:fixed;bottom:0;left:0;right:0;z-index:99991;padding:16px 24px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.mlpp-bottom .mlpp-close{position:static}
+
+/* SLIDE-IN */
+.mlpp-slide{position:fixed;bottom:24px;right:24px;z-index:99991;padding:24px;max-width:360px;width:calc(100vw - 48px)}
+
+/* FULLSCREEN */
+.mlpp-full{position:fixed;inset:0;z-index:99992;display:flex;align-items:center;justify-content:center;padding:32px}
+.mlpp-full-inner{position:relative;max-width:640px;width:100%}
+.mlpp-full .mlpp-close{top:14px;right:14px}
+
+/* FLOATING */
+.mlpp-float{position:fixed;bottom:80px;right:24px;z-index:99991;padding:22px;max-width:320px;width:calc(100vw - 48px)}
+
+/* ANIMATIONS */
+.mlpp-anim-fade{animation:mlppFade .3s ease}
+@keyframes mlppFade{from{opacity:0}to{opacity:1}}
+.mlpp-anim-slide-down .mlpp-box,.mlpp-anim-slide-down.mlpp-slide,.mlpp-anim-slide-down.mlpp-float{animation:mlppSDown .32s ease}
+@keyframes mlppSDown{from{opacity:0;transform:translateY(-28px)}to{opacity:1;transform:translateY(0)}}
+.mlpp-anim-slide-up .mlpp-box,.mlpp-anim-slide-up.mlpp-slide,.mlpp-anim-slide-up.mlpp-float,.mlpp-anim-slide-up.mlpp-bottom{animation:mlppSUp .32s ease}
+@keyframes mlppSUp{from{opacity:0;transform:translateY(28px)}to{opacity:1;transform:translateY(0)}}
+.mlpp-anim-zoom .mlpp-box{animation:mlppZoom .28s ease}
+@keyframes mlppZoom{from{opacity:0;transform:scale(.88)}to{opacity:1;transform:scale(1)}}
+
+@media(prefers-reduced-motion:reduce){.mlpp-ov,.mlpp-box,.mlpp-bottom,.mlpp-slide,.mlpp-full,.mlpp-float{animation:none!important}}
+@media(max-width:640px){
+  .mlpp-box{width:100%!important;max-width:calc(100vw - 24px)!important;max-height:calc(100vh - 24px)!important;border-radius:14px;padding:22px 18px 18px!important}
+  .mlpp-slide{bottom:12px;right:12px;left:12px;max-width:calc(100vw - 24px)!important;max-height:calc(100vh - 24px)!important;width:auto}
+  .mlpp-float{bottom:12px;right:12px;left:12px;max-width:calc(100vw - 24px)!important;max-height:calc(100vh - 24px)!important;width:auto}
+  .mlpp-bottom{max-height:calc(100vh - 12px)!important;overflow-y:auto}
+  .mlpp-full-inner{max-height:calc(100vh - 24px)!important}
+  .mlpp-content-side{flex-direction:column!important;align-items:stretch}
+  .mlpp-side-img{flex:0 0 auto;width:100%!important;max-width:100%!important;max-height:none!important}
+}
