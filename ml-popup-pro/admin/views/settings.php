@@ -21,19 +21,19 @@ function mlpp_schk( array $settings, string $key ): string {
 		<div class="mlpp-hero-brand">
 			<div class="mlpp-hero-mark"><img src="<?php echo esc_url( MLPP_PLUGIN_URL . 'admin/assets/logo.png' ); ?>" alt="ML Lopes Design" width="72" height="72" style="width:72px!important;height:72px!important;max-width:72px!important;max-height:72px!important;object-fit:contain!important;display:block!important;"></div>
 			<div class="mlpp-hero-copy">
-				<span class="mlpp-hero-eyebrow">ML Popup Pro · Configurações</span>
-				<h1>Configurações</h1>
-				<p class="mlpp-hero-intro">Configurações globais do plugin, armazenamento, consentimento, import e export.</p>
+				<span class="mlpp-hero-eyebrow"><?php echo esc_html__( 'ML Popup Pro · Configurações', 'ml-popup-pro' ); ?></span>
+				<h1><?php echo esc_html__( 'Configurações', 'ml-popup-pro' ); ?></h1>
+				<p class="mlpp-hero-intro"><?php echo esc_html__( 'Configurações globais do plugin, armazenamento, consentimento, import e export.', 'ml-popup-pro' ); ?></p>
 			</div>
 		</div>
 	</section>
 
 	<nav class="mlpp-tabs">
-		<button type="button" class="mlpp-tab-btn is-active" data-tab="mlpp-tab-cfg-global">Global</button>
-		<button type="button" class="mlpp-tab-btn" data-tab="mlpp-tab-cfg-brand">🎨 Identidade</button>
-		<button type="button" class="mlpp-tab-btn" data-tab="mlpp-tab-cfg-io">Import / Export</button>
-		<button type="button" class="mlpp-tab-btn" data-tab="mlpp-tab-cfg-updater">🔄 Atualizações</button>
-		<button type="button" class="mlpp-tab-btn" data-tab="mlpp-tab-cfg-activation">🔑 Ativação <span class="mlpp-chip" style="background:#fef3c7;color:#92400e;font-size:10px;margin-left:4px"><?php echo esc_html( $license_status ?? 'Free' ); ?></span></button>
+		<button type="button" class="mlpp-tab-btn is-active" data-tab="mlpp-tab-cfg-global"><?php echo esc_html__( 'Global', 'ml-popup-pro' ); ?></button>
+		<button type="button" class="mlpp-tab-btn" data-tab="mlpp-tab-cfg-brand"><?php echo esc_html__( '🎨 Identidade', 'ml-popup-pro' ); ?></button>
+		<button type="button" class="mlpp-tab-btn" data-tab="mlpp-tab-cfg-io"><?php echo esc_html__( 'Import / Export', 'ml-popup-pro' ); ?></button>
+		<button type="button" class="mlpp-tab-btn" data-tab="mlpp-tab-cfg-updater"><?php echo esc_html__( '🔄 Atualizações', 'ml-popup-pro' ); ?></button>
+		<button type="button" class="mlpp-tab-btn" data-tab="mlpp-tab-cfg-activation"><?php echo esc_html__( '🔑 Ativação', 'ml-popup-pro' ); ?> <span class="mlpp-chip" style="background:#fef3c7;color:#92400e;font-size:10px;margin-left:4px"><?php echo esc_html( $license_status ?? __( 'Free', 'ml-popup-pro' ) ); ?></span></button>
 	</nav>
 
 	<style>

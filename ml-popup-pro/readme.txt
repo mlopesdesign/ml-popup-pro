@@ -4,7 +4,7 @@ Tags: popup, modal, lead capture, marketing, campaign
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 8.1
-Stable tag: 1.4.0
+Stable tag: 1.4.1
 License: GPL2+
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -54,6 +54,12 @@ A verificação é feita contra a Hub local (quando presente em `ml-popup-pro/hu
 3. Acesse ML Popup Pro no menu lateral
 
 == Changelog ==
+
+= 1.4.1 =
+* **CI com PHPUnit:** novo job `test` em `release.yml` que roda `composer install && vendor/bin/phpunit`. O job `lint` (PHP `php -l` + Node `node --check` + sync-version) e o job de build só rodam depois de lint+test passarem. PRs contra `main` recebem o gate automaticamente antes do build.
+* **README.md e CHANGELOG.md** adicionados ao repositório (separados do `readme.txt`, que continua sendo o header WordPress). README é dev-focused, CHANGELOG segue [Keep a Changelog](https://keepachangelog.com/) e cobre v1.0 → atual com notas de breaking e blocos Adicionado/Corrigido.
+* **`.harness/AGENTS.md`:** instruções imutáveis pra qualquer agente ou dev que aterrize no repo (identidade técnica, versionamento, sanitização, LGPD, fluxo de release). `.harness/README.md` documenta o propósito do diretório.
+* **i18n:** primeiras 6 strings da aba Configurações (eyebrow hero, h1, intro, labels de abas) convertidas pra `esc_html__()`. Demais views podem ser convertidas em PRs incrementais (mecanismo já ativo via `load_plugin_textdomain`).
 
 = 1.4.0 =
 * **LGPD / GDPR via WP Consent API (WP 6.0+):** quando o ajuste "Modo de consentimento" estiver em "Aguardar consentimento", o plugin consulta `wp_has_consent('mlpp/marketing')` antes de exibir popups. Categoria registrada com `wp_register_consent_category()` no init. Falha de forma segura em WP < 6.0 (mostra popup; preserva UX).
@@ -164,6 +170,9 @@ A verificação é feita contra a Hub local (quando presente em `ml-popup-pro/hu
 * Lançamento inicial.
 
 == Upgrade Notice ==
+
+= 1.4.1 =
+* CI agora roda testes PHPUnit no PR e no build (gate antes do release). README/CHANGELOG/.harness docs adicionados. Atualização opcional, sem breaking changes. Atualize quando quiser CI gates completos.
 
 = 1.4.0 =
 * Compliance LGPD (Consent API WP 6.0+) com categoria dedicada, exit-intent mobile nativo, audit log de alterações, i18n completa (.pot base) e testes PHPUnit. Atualize para DB_VERSION 6 com auto-migration.
