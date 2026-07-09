@@ -104,14 +104,26 @@ final class MLPP_Updater {
 			);
 		}
 
+		// Last-resort fallback when GitHub Releases CDN is unreachable (504/timeouts).
+		// The archive zipball has structure `<repo>-<version>/...` and the WP
+		// Upgrader extracts the plugin folder via header detection.
+		$zipball_url = sprintf(
+			'https://github.com/%s/%s/archive/refs/tags/v%s.zip',
+			self::GITHUB_OWNER,
+			self::GITHUB_REPO,
+			$version
+		);
+
 		$release = [
 			'version'      => $version,
 			'tag_name'     => (string) $body['tag_name'],
 			'name'         => (string) ( $body['name'] ?? $body['tag_name'] ),
 			'changelog'    => (string) ( $body['body'] ?? '' ),
 			'zip_url'      => esc_url_raw( $zip_url ),
+			'zipball_url'  => esc_url_raw( $zipball_url ),
 			'release_url'  => esc_url_raw( (string) ( $body['html_url'] ?? '' ) ),
 			'published_at' => (string) ( $body['published_at'] ?? '' ),
+			'zip_fallbacks'=> [], // filled by apply_zip_fallbacks() if theme/addon adds mirrors
 		];
 
 		delete_site_option( 'mlpp_github_update_last_error' );
@@ -215,7 +227,17 @@ final class MLPP_Updater {
 	}
 
 	private function build_update_object( array $release ): ?object {
-		if ( empty( $release['version'] ) || empty( $release['zip_url'] ) ) {
+		if ( empty( $release['version'] ) ) {
+			return null;
+		}
+
+		// Pick the first URL that is actually reachable. GitHub Releases CDN
+		// (releases/download) frequently returns 504/503/timed-out; the
+		// deterministic URL and the archive zipball are reliable fallbacks.
+		$package = $this->pick_working_zip_url( $release );
+
+		if ( '' === $package ) {
+			$this->store_last_error( 'Nenhuma URL de download acessível para a versão ' . $release['version'] . '. Tente novamente em alguns minutos.' );
 			return null;
 		}
 
@@ -225,7 +247,7 @@ final class MLPP_Updater {
 			'plugin'         => self::PLUGIN_BASENAME,
 			'new_version'    => (string) $release['version'],
 			'url'            => (string) $release['release_url'],
-			'package'        => (string) $release['zip_url'],
+			'package'        => (string) $package,
 			'tested'         => get_bloginfo( 'version' ),
 			'requires'       => '6.0',
 			'requires_php'   => '8.1',
@@ -234,6 +256,87 @@ final class MLPP_Updater {
 			'banners_rtl'    => [],
 			'upgrade_notice' => '',
 		];
+	}
+
+	/**
+	 * Build the ordered list of candidate ZIP URLs to probe. The first one
+	 * that returns HTTP 200 from the server hosting the WP install wins.
+	 * Allow themes/addons to inject mirrors via `mlpp_zip_url_mirrors`.
+	 *
+	 * @return array<int, string>
+	 */
+	private function candidate_zip_urls( array $release ): array {
+		$urls = [];
+
+		if ( ! empty( $release['zip_url'] ) ) {
+			$urls[] = (string) $release['zip_url'];
+		}
+		if ( ! empty( $release['zipball_url'] ) ) {
+			$urls[] = (string) $release['zipball_url'];
+		}
+
+		$mirrors = (array) apply_filters( 'mlpp_zip_url_mirrors', [], $release );
+		foreach ( $mirrors as $mirror ) {
+			if ( is_string( $mirror ) && '' !== $mirror ) {
+				$urls[] = esc_url_raw( $mirror );
+			}
+		}
+
+		return array_values( array_unique( array_filter( $urls ) ) );
+	}
+
+	/**
+	 * Probe candidate URLs in order. Returns the first one that responds
+	 * with HTTP 200 within the timeout, or an empty string when all fail.
+	 *
+	 * Uses a single GET with `Range: bytes=0-0` when possible — faster and
+	 * cheaper than downloading the full ZIP, and still returns 200/206
+	 * vs the 504 the server actually gives when the asset is unreachable.
+	 */
+	private function pick_working_zip_url( array $release ): string {
+		$candidates = $this->candidate_zip_urls( $release );
+		if ( empty( $candidates ) ) {
+			return '';
+		}
+
+		foreach ( $candidates as $url ) {
+			if ( $this->url_reachable( $url ) ) {
+				return $url;
+			}
+		}
+		return '';
+	}
+
+	/**
+	 * Quick reachability check. Sends a short GET; treats any HTTP 2xx/3xx
+	 * as reachable. Caches the result in a per-request static to avoid
+	 * probing the same URL multiple times during one update check.
+	 *
+	 * @return bool
+	 */
+	private function url_reachable( string $url ): bool {
+		static $cache = [];
+		if ( isset( $cache[ $url ] ) ) {
+			return $cache[ $url ];
+		}
+
+		$response = wp_remote_request( $url, [
+			'method'      => 'HEAD',
+			'timeout'     => 8,
+			'redirection' => 5,
+			'user-agent'  => 'ML-Popup-Pro-Updater/' . MLPP_VERSION . ' WordPress/' . get_bloginfo( 'version' ),
+			'sslverify'   => true,
+		] );
+
+		if ( is_wp_error( $response ) ) {
+			$cache[ $url ] = false;
+			return false;
+		}
+
+		$code = (int) wp_remote_retrieve_response_code( $response );
+		$ok   = $code >= 200 && $code < 400;
+		$cache[ $url ] = $ok;
+		return $ok;
 	}
 
 	/**

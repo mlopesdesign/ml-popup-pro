@@ -4,7 +4,7 @@ Tags: popup, modal, lead capture, marketing, campaign
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 8.1
-Stable tag: 1.0.13
+Stable tag: 1.0.14
 License: GPL2+
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -35,6 +35,11 @@ Funcionalidades principais:
 3. Acesse ML Popup Pro no menu lateral
 
 == Changelog ==
+
+= 1.0.14 =
+* **Resiliência do auto-update:** o Updater agora testa HEAD em cada URL candidata (asset oficial / URL determinística / zipball do source) e retorna a primeira que responde 2xx/3xx. Bypassa instabilidades do CDN de GitHub Releases (`releases/download/`) que frequentemente retorna 504.
+* **Filtro novo `mlpp_zip_url_mirrors`:** permite injetar URLs adicionais (mirror próprio em R2/S3, CDN próprio, etc) via tema ou addon, sem fork.
+* **Mensagens de erro mais claras:** quando nenhuma URL está acessível, o painel mostra a causa específica em vez de "Falha no download" genérico.
 
 = 1.0.13 =
 * **Proteção contra abuso no analytics:** rate limiting no endpoint AJAX de eventos (transient por IP + popup + tipo de evento, janela padrão de 5s). Visitor não consegue mais inflar a tabela de eventos em loop.
@@ -112,6 +117,9 @@ Funcionalidades principais:
 * Lançamento inicial.
 
 == Upgrade Notice ==
+
+= 1.0.14 =
+* Auto-update resiliente: bypass de instabilidades do CDN do GitHub Releases via fallback automático para zipball + mirrors configuráveis. Atualização recomendada para quem teve erro 504 no download.
 
 = 1.0.13 =
 * Adiciona rate limiting no AJAX de eventos, filtros de período/popup/dispositivo no analytics, goal tracking automático por CSS selector, quatro novos templates e hooks de extensibilidade.
