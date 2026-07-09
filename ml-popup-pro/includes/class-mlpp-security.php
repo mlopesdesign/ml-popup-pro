@@ -159,6 +159,10 @@ final class MLPP_Security {
 	 * invalid/empty lines are dropped. Used by the frontend to
 	 * fire a `conversion` event when the visitor clicks a matching
 	 * element inside the popup.
+	 *
+	 * Only characters valid in CSS selectors are allowed:
+	 * alphanumeric, space, `,`, `.`, `#`, `:`, `-`, `_`, `[`, `]`, `>`,
+	 * `+`, `~`, `(`, `)`, `*`, `=`, `'`, `"`, `/`, `@`.
 	 */
 	private static function sanitize_goal_selectors( $raw ): array {
 		$raw_str = is_array( $raw ) ? implode( "\n", array_map( 'strval', $raw ) ) : (string) $raw;
@@ -166,10 +170,13 @@ final class MLPP_Security {
 		$clean   = [];
 		foreach ( (array) $lines as $line ) {
 			$line = trim( sanitize_text_field( $line ) );
-			// Reject obviously broken selectors (no closing bracket, parens, etc).
 			if ( '' === $line ) continue;
 			if ( strlen( $line ) > 500 ) continue;
-			if ( preg_match( '/[<>"\'`]|javascript:/i', $line ) ) continue;
+			// Reject javascript: pseudo-schemes and any backtick/control chars.
+			if ( preg_match( '/javascript:|data:|vbscript:|`/i', $line ) ) continue;
+			if ( preg_match( '/[<>\\\\]/', $line ) ) continue;
+			// Allow only CSS-selector-safe characters.
+			if ( ! preg_match( '/^[A-Za-z0-9._\-\[\]\(\)#,:>*+~=@"\'\/ ]+$/', $line ) ) continue;
 			$clean[] = $line;
 		}
 		return array_values( array_unique( $clean ) );
