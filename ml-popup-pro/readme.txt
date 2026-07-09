@@ -4,7 +4,7 @@ Tags: popup, modal, lead capture, marketing, campaign
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 8.1
-Stable tag: 1.4.1
+Stable tag: 1.5.0
 License: GPL2+
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -54,6 +54,10 @@ A verificação é feita contra a Hub local (quando presente em `ml-popup-pro/hu
 3. Acesse ML Popup Pro no menu lateral
 
 == Changelog ==
+
+= 1.5.0 =
+* **🌑 Dark mode (Free):** nova seção na aba 🎨 Identidade visual com checkbox "Tema escuro". Quando ativado, o plugin enfileira `admin-dark.css` e adiciona `body.mlpp-dark` em todas as páginas admin do plugin (independente do tema global do WP). Paleta dark re-mapea as CSS variables `--ml-brand`, `--ml-ink`, `--ml-surface`, etc. afim de deixar cards, tabelas, formulários e o hero com contraste confortável.
+* **🆔 A/B analytics dashboard (Pro):** nova seção "Comparação A/B" em Analytics mostra, pra cada `variant_group_id` ativo no recorte atual, uma tabela por variante com `variant_label`, `variant_split` (peso configurado), impressões, cliques, conversões, **CTR** e **CVR**. Backend novo `Analytics::get_variant_breakdown()` faz JOIN entre `wp_mlpp_events` e `wp_mlpp_popups` agrupando por `(popup_id, variant_label)`. Sem licença ativa, mostra prompt explicativo em vez de dados vazios.
 
 = 1.4.1 =
 * **CI com PHPUnit:** novo job `test` em `release.yml` que roda `composer install && vendor/bin/phpunit`. O job `lint` (PHP `php -l` + Node `node --check` + sync-version) e o job de build só rodam depois de lint+test passarem. PRs contra `main` recebem o gate automaticamente antes do build.
@@ -170,6 +174,9 @@ A verificação é feita contra a Hub local (quando presente em `ml-popup-pro/hu
 * Lançamento inicial.
 
 == Upgrade Notice ==
+
+= 1.5.0 =
+* Dark mode opcional para todas as telas administrativas (independente do tema WP) e dashboard de comparação A/B por variante (Pro) com CTR/CVR calculados. Atualize para UI completa.
 
 = 1.4.1 =
 * CI agora roda testes PHPUnit no PR e no build (gate antes do release). README/CHANGELOG/.harness docs adicionados. Atualização opcional, sem breaking changes. Atualize quando quiser CI gates completos.

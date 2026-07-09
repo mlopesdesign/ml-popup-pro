@@ -108,6 +108,68 @@ final class MLPP_Analytics {
 	}
 
 	/**
+	 * Returns A/B test breakdown for popups with variant_group_id > 0.
+	 * Each variant row carries its label, weighted show rate (when
+	 * available) and event counts so the admin can compare CTR/CVR.
+	 *
+	 * @return array<int, array{group_id:int,popup_id:int,popup_name:string,variant_label:string,split:int,impressions:int,clicks:int,conversions:int}>
+	 */
+	public function get_variant_breakdown( array $filters = [] ): array {
+		global $wpdb;
+		$p = $wpdb->prefix;
+
+		// Step 1: gather variant rows (joined with popup name).
+		$popups = $wpdb->prefix . 'mlpp_popups';
+		$events = $this->table();
+
+		[ $where, $params ] = $this->build_where( $filters );
+		// Restrict to A/B participating popups.
+		$where_extra = $where ? ' AND popups.variant_group_id > 0' : 'WHERE popups.variant_group_id > 0';
+		$params2     = $params;
+		array_unshift( $params2, 'variant_group_id' );
+
+		// Count events for each popup_id+variant_label combo.
+		$sql = "SELECT popups.variant_group_id AS group_id,
+				popups.id AS popup_id,
+				popups.name AS popup_name,
+				events.variant_label,
+				popups.variant_split AS variant_split,
+				SUM(CASE WHEN events.event_type = 'impression' THEN 1 ELSE 0 END) AS impressions,
+				SUM(CASE WHEN events.event_type IN ('primary_click','secondary_click','image_click') THEN 1 ELSE 0 END) AS clicks,
+				SUM(CASE WHEN events.event_type = 'conversion' THEN 1 ELSE 0 END) AS conversions
+			FROM {$events} AS events
+			JOIN {$popups} AS popups ON popups.id = events.popup_id
+			{$where}{$where_extra}
+			GROUP BY events.popup_id, events.variant_label
+			ORDER BY popups.variant_group_id ASC, popups.id ASC, events.variant_label ASC";
+
+		if ( $params2 ) {
+			$rows = $wpdb->get_results( $wpdb->prepare( $sql, $params2 ), ARRAY_A );
+		} else {
+			$rows = $wpdb->get_results( $sql, ARRAY_A );
+		}
+
+		if ( ! is_array( $rows ) ) {
+			return [];
+		}
+
+		$out = [];
+		foreach ( $rows as $r ) {
+			$out[] = [
+				'group_id'       => (int) ( $r['group_id'] ?? 0 ),
+				'popup_id'       => (int) ( $r['popup_id'] ?? 0 ),
+				'popup_name'     => (string) ( $r['popup_name'] ?? '' ),
+				'variant_label'  => (string) ( $r['variant_label'] ?? '' ),
+				'split'          => (int) ( $r['variant_split'] ?? 0 ),
+				'impressions'    => (int) ( $r['impressions'] ?? 0 ),
+				'clicks'         => (int) ( $r['clicks'] ?? 0 ),
+				'conversions'    => (int) ( $r['conversions'] ?? 0 ),
+			];
+		}
+		return $out;
+	}
+
+	/**
 	 * Build a parameterized WHERE clause for analytics queries.
 	 *
 	 * Supported filters:

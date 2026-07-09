@@ -1,0 +1,111 @@
+/* ML Popup Pro – Dark Mode overrides
+ *
+ * Loaded only when the user opts in via Configurações > Identidade >
+ * "Tema escuro" (mlpp_brand.dark_mode = '1'). Overrides the CSS
+ * custom properties declared in admin.css with a dark palette so every
+ * admin screen of the plugin automatically follows.
+ *
+ * @package ML_Popup_Pro
+ */
+
+body.mlpp-dark {
+	--ml-brand:       #38bdf8;
+	--ml-brand-dark:  #0ea5e9;
+	--ml-brand-soft:  rgba(56, 189, 248, .12);
+	--ml-ink:         #e2e8f0;
+	--ml-muted:       #94a3b8;
+	--ml-line:        #1e293b;
+	--ml-line-strong: #334155;
+	--ml-surface:     #0f172a;
+	--ml-bg:          #020617;
+	--ml-shadow:      0 10px 28px rgba(0, 0, 0, .45);
+	--ml-shadow-soft: 0 4px 16px rgba(0, 0, 0, .35);
+}
+
+/* Page chrome */
+body.mlpp-dark body,
+body.mlpp-dark .mlpp-wrap,
+body.mlpp-dark .mlpp-card,
+body.mlpp-dark .mlpp-stat-card,
+body.mlpp-dark .mlpp-sidebar-panel,
+body.mlpp-dark .mlpp-admin-nav {
+	background-color: var(--ml-surface) !important;
+	color: var(--ml-ink) !important;
+	border-color: var(--ml-line) !important;
+}
+
+body.mlpp-dark .mlpp-table th,
+body.mlpp-dark .mlpp-table td,
+body.mlpp-dark .widefat th,
+body.mlpp-dark .widefat td {
+	background-color: var(--ml-surface) !important;
+	color: var(--ml-ink) !important;
+	border-color: var(--ml-line) !important;
+}
+
+body.mlpp-dark input[type="text"],
+body.mlpp-dark input[type="number"],
+body.mlpp-dark input[type="url"],
+body.mlpp-dark input[type="email"],
+body.mlpp-dark select,
+body.mlpp-dark textarea {
+	background-color: #1e293b !important;
+	color: var(--ml-ink) !important;
+	border-color: var(--ml-line-strong) !important;
+}
+
+body.mlpp-dark .mlpp-hero {
+	background: linear-gradient(135deg, #0f172a, #1e293b) !important;
+}
+
+body.mlpp-dark .mlpp-tabs {
+	border-bottom-color: var(--ml-line) !important;
+}
+
+body.mlpp-dark .mlpp-chip {
+	background: rgba(56, 189, 248, .15) !important;
+	color: #38bdf8 !important;
+}
+
+body.mlpp-dark .mlpp-note {
+	background: var(--ml-surface) !important;
+	color: var(--ml-muted) !important;
+	border-color: var(--ml-line) !important;
+}
+
+/* Buttons */
+body.mlpp-dark .button,
+body.mlpp-dark .button-primary {
+	background: var(--ml-brand) !important;
+	border-color: var(--ml-brand) !important;
+	color: #0f172a !important;
+}
+body.mlpp-dark .button-secondary {
+	background: var(--ml-line) !important;
+	color: var(--ml-ink) !important;
+}
+
+body.mlpp-dark .mlpp-alert-warning {
+	background: rgba(245, 158, 11, .15) !important;
+	color: #fbbf24 !important;
+	border-color: rgba(245, 158, 11, .4) !important;
+}
+
+body.mlpp-dark .mlpp-alert-success {
+	background: rgba(34, 197, 94, .15) !important;
+	color: #4ade80 !important;
+	border-color: rgba(34, 197, 94, .4) !important;
+}
+
+/* Toast */
+body.mlpp-dark .mlpp-toast {
+	background-color: var(--ml-brand) !important;
+	color: #0f172a !important;
+}
+
+/* Hero eyebrow / titles stay bright */
+body.mlpp-dark h1,
+body.mlpp-dark h2,
+body.mlpp-dark h3 {
+	color: #f1f5f9 !important;
+}

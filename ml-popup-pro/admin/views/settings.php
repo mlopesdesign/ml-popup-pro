@@ -245,6 +245,16 @@ function mlpp_schk( array $settings, string $key ): string {
 					<button type="submit" class="button button-primary mlpp-btn">Salvar cores</button>
 				</div>
 			</article>
+
+			<article class="mlpp-card" style="margin-top:14px">
+				<div class="mlpp-card-header"><div><h2>🌓 Tema escuro</h2><p class="mlpp-hero-intro">Aplica paleta dark em todas as telas administrativas do plugin. Independente do tema do WP.</p></div></div>
+				<div class="mlpp-field">
+					<label>
+						<input type="checkbox" name="mlpp_brand[dark_mode]" value="1" <?php checked( (string) ( $brand['dark_mode'] ?? '0' ), '1' ); ?>>
+						Ativar tema escuro para todas as telas do plugin
+					</label>
+				</div>
+			</article>
 		</form>
 	</section>
 
