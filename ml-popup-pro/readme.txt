@@ -4,7 +4,7 @@ Tags: popup, modal, lead capture, marketing, campaign
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 8.1
-Stable tag: 1.1.0
+Stable tag: 1.2.0
 License: GPL2+
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -54,6 +54,13 @@ A verificação é feita contra a Hub local (quando presente em `ml-popup-pro/hu
 3. Acesse ML Popup Pro no menu lateral
 
 == Changelog ==
+
+= 1.2.0 =
+* **Integração real com a ML License Hub:** validação de serial agora bate no endpoint oficial `https://license.mlopesdesign.com.br/api/license.php` via POST (action=validate_license, product_id=ml-popup-pro, license_key, domain, site_url, version). Cache local de 12h com botões para forçar re-verificação.
+* **Diagnóstico completo na aba Ativação:** mostra servidor, produto, plano, domínio autorizado, data de expiração e timestamp da última verificação — tudo vindo da Hub.
+* **Constantes opcionais:** `MLPP_LICENSE_KEY` (em wp-config.php) para bypass da rede e `MLPP_LICENSE_SERVER` para apontar a um endpoint de testes.
+* **Filtros novos:** `mlpp_license_server` e `mlpp_license_product_id` para override programático do endpoint e do slug do produto.
+* **Mapeamento de status:** traduz status da Hub (`active`, `expired`, `suspended`, `cancelled`, `not_found`, `domain_mismatch`, `unknown_product`, etc.) para estados internos Free/Pro/expirada/revogada/inválida.
 
 = 1.1.0 =
 * **Camada Free / Pro:** nova classe `MLPP_License` com helper global `mlpp_is_premium()`. Ativação por serial Pro libera os recursos premium; plugin continua funcionando Free sem licença.
@@ -144,6 +151,9 @@ A verificação é feita contra a Hub local (quando presente em `ml-popup-pro/hu
 * Lançamento inicial.
 
 == Upgrade Notice ==
+
+= 1.2.0 =
+* Validação de serial Pro passa a usar a ML License Hub oficial. Atualize para destravar checagem de domínio, expiração e plano via painel central.
 
 = 1.1.0 =
 * Adiciona camada Free vs Pro: aba de Ativação por serial Pro, identidade visual customizável e gating das features premium. Free mantém as funcionalidades básicas. Update transparente sobre qualquer v1.0.x.

@@ -253,19 +253,34 @@ function mlpp_schk( array $settings, string $key ): string {
 			</div>
 
 			<?php if ( mlpp_is_premium() ) : ?>
-				<?php $details = is_array( $license_details ) ? $license_details : []; ?>
+				<?php
+					$details = is_array( $license_details ) ? $license_details : [];
+					$last    = MLPP_License::last_verification();
+				?>
 				<div class="mlpp-note" style="margin-bottom:16px">
-					<strong>Plano:</strong> <?php echo esc_html( $details['tier']    ?? 'Pro' ); ?><br>
-					<strong>Canal:</strong> <?php echo esc_html( $details['channel'] ?? 'padrao' ); ?><br>
-					<?php if ( ! empty( $details['note'] ) ) : ?>
-						<strong>Obs.:</strong> <?php echo esc_html( $details['note'] ); ?>
+					<strong>Plano:</strong> <?php echo esc_html( $details['plan']    ?? 'Pro' ); ?><br>
+					<strong>Dominio autorizado:</strong> <?php echo esc_html( $details['domain'] ?? '—' ); ?><br>
+					<strong>Expira em:</strong> <?php echo esc_html( $details['expires_at'] ?? '—' ); ?><br>
+					<strong>Servidor:</strong> <code><?php echo esc_html( MLPP_License::server_url() ); ?></code><br>
+					<strong>Produto:</strong> <code><?php echo esc_html( MLPP_License::product_id() ); ?></code><br>
+					<?php if ( ! empty( $last['checked_at'] ) ) : ?>
+						<strong>Ultima verificacao:</strong> <?php echo esc_html( wp_date( 'd/m/Y H:i', (int) $last['checked_at'] ) ); ?>
 					<?php endif; ?>
 				</div>
-				<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" onsubmit="return confirm('Desativar a licença Pro? O plugin volta para Free.');">
-					<?php wp_nonce_field( 'mlpp_deactivate_license' ); ?>
-					<input type="hidden" name="action" value="mlpp_deactivate_license">
-					<button type="submit" class="mlpp-btn-secondary">Desativar licença</button>
-				</form>
+				<div class="mlpp-actions" style="display:flex;gap:10px">
+					<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="display:inline">
+						<?php wp_nonce_field( 'mlpp_activate_license' ); ?>
+						<input type="hidden" name="action" value="mlpp_activate_license">
+						<input type="hidden" name="mlpp_license_key" value="<?php echo esc_attr( (string) get_option( MLPP_License::OPTION_KEY, '' ) ); ?>">
+						<input type="hidden" name="mlpp_force_recheck" value="1">
+						<button type="submit" class="mlpp-btn-secondary">🔄 Reverificar agora</button>
+					</form>
+					<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="display:inline" onsubmit="return confirm('Desativar a licenca Pro? O plugin volta para Free.');">
+						<?php wp_nonce_field( 'mlpp_deactivate_license' ); ?>
+						<input type="hidden" name="action" value="mlpp_deactivate_license">
+						<button type="submit" class="mlpp-btn-secondary">Desativar licenca</button>
+					</form>
+				</div>
 			<?php else : ?>
 				<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
 					<?php wp_nonce_field( 'mlpp_activate_license' ); ?>
@@ -292,11 +307,16 @@ function mlpp_schk( array $settings, string $key ): string {
 					<article class="mlpp-stat-card"><strong>🪝 Hooks extensibilidade</strong><small>Filters para addons, integrações e customização sem fork</small></article>
 				</div>
 
-				<?php if ( MLPP_License::hub_present() ) : ?>
-					<p class="mlpp-note" style="margin-top:18px"><strong>Hub local detectado:</strong> <?php echo esc_html( MLPP_PLUGIN_DIR . MLPP_License::HUB_DIR ); ?>. A verificação do serial será feita contra a hub local.</p>
-				<?php else : ?>
-					<p class="mlpp-note" style="margin-top:18px"><strong>Modo dev:</strong> sem Hub local instalado em <code><?php echo esc_html( MLPP_PLUGIN_DIR . MLPP_License::HUB_DIR ); ?></code>. Seriais com formato válido são aceitos localmente para teste. Quando você colocar a Hub na pasta raiz, a verificação passa a ser remota e os recursos Pro conectam ao license server oficial.</p>
-				<?php endif; ?>
+				<p class="mlpp-note" style="margin-top:18px">
+					<strong>Servidor de licença:</strong> <code><?php echo esc_html( MLPP_License::server_url() ); ?></code><br>
+					<strong>Produto:</strong> <code><?php echo esc_html( MLPP_License::product_id() ); ?></code><br>
+					O serial é validado remotamente contra a Hub central. Cadastre sua chave em
+					<a href="<?php echo esc_url( 'https://license.mlopesdesign.com.br/admin/' ); ?>" target="_blank" rel="noopener">license.mlopesdesign.com.br/admin</a>
+					antes de colar aqui — ela precisa estar com o produto
+					<code><?php echo esc_html( MLPP_License::product_id() ); ?></code>
+					cadastrado e o domínio <code><?php echo esc_html( wp_parse_url( home_url(), PHP_URL_HOST ) ); ?></code>
+					autorizado (ou licença sem domínio fixo).
+				</p>
 			<?php endif; ?>
 		</article>
 	</section>

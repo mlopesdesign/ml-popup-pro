@@ -189,9 +189,10 @@ final class MLPP_Admin {
 	public function handle_activate_license(): void {
 		MLPP_Security::check_admin();
 		MLPP_Security::verify_nonce( 'mlpp_activate_license' );
-		$raw  = isset( $_POST['mlpp_license_key'] ) ? sanitize_text_field( wp_unslash( (string) $_POST['mlpp_license_key'] ) ) : '';
-		$res  = MLPP_License::activate( $raw );
-		$type = $res['ok'] ? 'success' : 'error';
+		$raw   = isset( $_POST['mlpp_license_key'] ) ? sanitize_text_field( wp_unslash( (string) $_POST['mlpp_license_key'] ) ) : '';
+		$force = ! empty( $_POST['mlpp_force_recheck'] );
+		$res   = MLPP_License::activate( $raw, $force );
+		$type  = $res['ok'] ? 'success' : 'error';
 		$this->redirect_with_toast(
 			admin_url( 'admin.php?page=mlpp-settings&tab=cfg-activation' ),
 			$res['message'],
