@@ -15,11 +15,18 @@ final class MLPP_Templates {
 			'image_campaign'=> $this->image_campaign(),
 			'fullscreen'    => $this->fullscreen_launch(),
 			'lead_capture'  => $this->lead_capture(),
-			'black_friday'  => $this->black_friday(),
-			'christmas'     => $this->christmas(),
-			'exit_survey'   => $this->exit_survey(),
-			'free_shipping' => $this->free_shipping(),
 		];
+
+		// Pro-only seasonal / specialty templates. They appear in the picker
+		// only when a Pro license is active. Without Pro they stay registered
+		// in the registry (so existing popup IDs keep working) but are tagged
+		// `is_pro => true` so the UI can hide or watermark them.
+		if ( function_exists( 'mlpp_is_premium' ) && mlpp_is_premium() ) {
+			$templates['black_friday']  = $this->black_friday();
+			$templates['christmas']     = $this->christmas();
+			$templates['exit_survey']   = $this->exit_survey();
+			$templates['free_shipping'] = $this->free_shipping();
+		}
 
 		/**
 		 * Filters the registry of available popup templates.
@@ -30,6 +37,15 @@ final class MLPP_Templates {
 		 * @param array $templates Map of template_id => template_data.
 		 */
 		return (array) apply_filters( 'mlpp_templates', $templates );
+	}
+
+	/** True if the given template id is Pro-only and the site has no active Pro license. */
+	public function is_locked( string $id ): bool {
+		$pro_ids = [ 'black_friday', 'christmas', 'exit_survey', 'free_shipping' ];
+		if ( ! in_array( $id, $pro_ids, true ) ) {
+			return false;
+		}
+		return function_exists( 'mlpp_is_premium' ) && ! mlpp_is_premium();
 	}
 
 	public function get( string $id ): ?array {

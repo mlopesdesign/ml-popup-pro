@@ -30,9 +30,19 @@ function mlpp_schk( array $settings, string $key ): string {
 
 	<nav class="mlpp-tabs">
 		<button type="button" class="mlpp-tab-btn is-active" data-tab="mlpp-tab-cfg-global">Global</button>
+		<button type="button" class="mlpp-tab-btn" data-tab="mlpp-tab-cfg-brand">🎨 Identidade</button>
 		<button type="button" class="mlpp-tab-btn" data-tab="mlpp-tab-cfg-io">Import / Export</button>
 		<button type="button" class="mlpp-tab-btn" data-tab="mlpp-tab-cfg-updater">🔄 Atualizações</button>
+		<button type="button" class="mlpp-tab-btn" data-tab="mlpp-tab-cfg-activation">🔑 Ativação <span class="mlpp-chip" style="background:#fef3c7;color:#92400e;font-size:10px;margin-left:4px"><?php echo esc_html( $license_status ?? 'Free' ); ?></span></button>
 	</nav>
+
+	<style>
+	:root{
+		--ml-brand: <?php echo esc_html( $brand['ml_brand'] ?? '#155e6f' ); ?>;
+		--ml-brand-dark: <?php echo esc_html( $brand['ml_brand_dark'] ?? '#114b5a' ); ?>;
+		--ml-ink: <?php echo esc_html( $brand['ml_ink'] ?? '#102a43' ); ?>;
+	}
+	</style>
 
 	<!-- TAB GLOBAL -->
 	<section id="mlpp-tab-cfg-global" class="mlpp-tab-panel is-active">
@@ -196,5 +206,98 @@ function mlpp_schk( array $settings, string $key ): string {
 			if (clearBtn) clearBtn.addEventListener('click', function(){ runUpdate(false); });
 		});
 		</script>
+	</section>
+
+	<!-- TAB IDENTIDADE VISUAL -->
+	<section id="mlpp-tab-cfg-brand" class="mlpp-tab-panel" hidden>
+		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+			<?php wp_nonce_field( 'mlpp_save_brand' ); ?>
+			<input type="hidden" name="action" value="mlpp_save_brand">
+			<article class="mlpp-card">
+				<div class="mlpp-card-header"><div><h2>🎨 Identidade visual</h2><p class="mlpp-hero-intro">Cores que aparecem em todas as telas administrativas do plugin. <strong>Funcionalidade Pro</strong>.</p></div></div>
+				<div class="mlpp-grid-3">
+					<div class="mlpp-field">
+						<label>Cor primária (brand)</label>
+						<input type="text" class="mlpp-color-picker" name="mlpp_brand[ml_brand]" value="<?php echo esc_attr( $brand['ml_brand'] ?? '#155e6f' ); ?>">
+					</div>
+					<div class="mlpp-field">
+						<label>Cor primária (escura)</label>
+						<input type="text" class="mlpp-color-picker" name="mlpp_brand[ml_brand_dark]" value="<?php echo esc_attr( $brand['ml_brand_dark'] ?? '#114b5a' ); ?>">
+					</div>
+					<div class="mlpp-field">
+						<label>Cor de texto (ink)</label>
+						<input type="text" class="mlpp-color-picker" name="mlpp_brand[ml_ink]" value="<?php echo esc_attr( $brand['ml_ink'] ?? '#102a43' ); ?>">
+					</div>
+				</div>
+				<p class="description">Esses valores viram CSS variables (<code>:root { --ml-brand: … }</code>) no cabeçalho das telas do plugin e persistem até você trocar novamente.</p>
+				<div class="mlpp-actions" style="margin-top:14px">
+					<button type="submit" class="button button-primary mlpp-btn">Salvar cores</button>
+				</div>
+			</article>
+		</form>
+	</section>
+
+	<!-- TAB ATIVAÇÃO -->
+	<section id="mlpp-tab-cfg-activation" class="mlpp-tab-panel" hidden>
+		<article class="mlpp-card">
+			<div class="mlpp-card-header">
+				<div>
+					<h2>🔑 Ativação</h2>
+					<p class="mlpp-hero-intro">Libera os recursos Pro do ML Popup Pro. O plugin funciona Free sem serial; Pro adiciona A/B testing, goal tracking, mais templates e filtros avançados de analytics.</p>
+				</div>
+				<div>
+					<span class="mlpp-chip" style="background:<?php echo mlpp_is_premium() ? '#d1fae5;color:#065f46' : '#fef9c3;color:#854d0e' ?>;font-size:12px;font-weight:700">
+						Status: <?php echo esc_html( $license_status ); ?>
+					</span>
+				</div>
+			</div>
+
+			<?php if ( mlpp_is_premium() ) : ?>
+				<?php $details = is_array( $license_details ) ? $license_details : []; ?>
+				<div class="mlpp-note" style="margin-bottom:16px">
+					<strong>Plano:</strong> <?php echo esc_html( $details['tier']    ?? 'Pro' ); ?><br>
+					<strong>Canal:</strong> <?php echo esc_html( $details['channel'] ?? 'padrao' ); ?><br>
+					<?php if ( ! empty( $details['note'] ) ) : ?>
+						<strong>Obs.:</strong> <?php echo esc_html( $details['note'] ); ?>
+					<?php endif; ?>
+				</div>
+				<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" onsubmit="return confirm('Desativar a licença Pro? O plugin volta para Free.');">
+					<?php wp_nonce_field( 'mlpp_deactivate_license' ); ?>
+					<input type="hidden" name="action" value="mlpp_deactivate_license">
+					<button type="submit" class="mlpp-btn-secondary">Desativar licença</button>
+				</form>
+			<?php else : ?>
+				<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+					<?php wp_nonce_field( 'mlpp_activate_license' ); ?>
+					<input type="hidden" name="action" value="mlpp_activate_license">
+					<div class="mlpp-field">
+						<label for="mlpp_license_key">Serial Pro</label>
+						<input type="text" id="mlpp_license_key" name="mlpp_license_key" value="<?php echo esc_attr( $license_key ); ?>" placeholder="XXXX-XXXX-XXXX-XXXX" autocomplete="off" style="font-family:monospace;letter-spacing:1px">
+						<p class="description">Recebeu o serial após a compra. Cole aqui e clique em Ativar.</p>
+					</div>
+					<div class="mlpp-actions" style="margin-top:14px">
+						<button type="submit" class="button button-primary mlpp-btn">Ativar</button>
+					</div>
+				</form>
+
+				<hr style="margin:24px 0;border:none;border-top:1px solid var(--ml-line)">
+
+				<h3>Recursos Pro</h3>
+				<div class="mlpp-grid-2" style="gap:14px">
+					<article class="mlpp-stat-card"><strong>🆔 A/B testing</strong><small>Variantes por popup com split de tráfego e CTR por variante</small></article>
+					<article class="mlpp-stat-card"><strong>🎯 Goal tracking automático</strong><small>Disparar conversão por CSS selector (WooCommerce, formulários, etc)</small></article>
+					<article class="mlpp-stat-card"><strong>📊 Analytics avançado</strong><small>Filtros por período/popup/dispositivo e breakdown por device</small></article>
+					<article class="mlpp-stat-card"><strong>🎄 Templates sazonais</strong><small>Black Friday, Natal, Exit Survey, Free Shipping e mais</small></article>
+					<article class="mlpp-stat-card"><strong>🛡 Rate limiting</strong><small>Proteção da tabela de eventos contra flood/bots</small></article>
+					<article class="mlpp-stat-card"><strong>🪝 Hooks extensibilidade</strong><small>Filters para addons, integrações e customização sem fork</small></article>
+				</div>
+
+				<?php if ( MLPP_License::hub_present() ) : ?>
+					<p class="mlpp-note" style="margin-top:18px"><strong>Hub local detectado:</strong> <?php echo esc_html( MLPP_PLUGIN_DIR . MLPP_License::HUB_DIR ); ?>. A verificação do serial será feita contra a hub local.</p>
+				<?php else : ?>
+					<p class="mlpp-note" style="margin-top:18px"><strong>Modo dev:</strong> sem Hub local instalado em <code><?php echo esc_html( MLPP_PLUGIN_DIR . MLPP_License::HUB_DIR ); ?></code>. Seriais com formato válido são aceitos localmente para teste. Quando você colocar a Hub na pasta raiz, a verificação passa a ser remota e os recursos Pro conectam ao license server oficial.</p>
+				<?php endif; ?>
+			<?php endif; ?>
+		</article>
 	</section>
 </div>

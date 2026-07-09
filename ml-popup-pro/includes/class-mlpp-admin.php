@@ -25,6 +25,9 @@ final class MLPP_Admin {
 		add_action( 'wp_ajax_mlpp_clear_stats',      [ $this, 'ajax_clear_stats' ] );
 		add_action( 'wp_ajax_mlpp_reset_frequency',  [ $this, 'ajax_reset_frequency' ] );
 		add_action( 'wp_ajax_mlpp_clear_update_cache', [ $this, 'ajax_clear_update_cache' ] );
+		add_action( 'admin_post_mlpp_activate_license',   [ $this, 'handle_activate_license' ] );
+		add_action( 'admin_post_mlpp_deactivate_license', [ $this, 'handle_deactivate_license' ] );
+		add_action( 'admin_post_mlpp_save_brand',         [ $this, 'handle_save_brand' ] );
 	}
 
 	public function register_menus(): void {
@@ -173,10 +176,55 @@ final class MLPP_Admin {
 	public function page_settings(): void {
 		MLPP_Security::check_admin();
 		$settings       = get_option( 'mlpp_settings', [] );
+		$brand          = get_option( 'mlpp_brand', [] );
 		$updater        = new MLPP_Updater();
 		$updater_status = $updater->get_status();
+		$license_status = MLPP_License::status_label();
+		$license_key    = (string) get_option( MLPP_License::OPTION_KEY, '' );
+		$license_details = get_option( MLPP_License::OPTION_DETAILS, [] );
 		$toast          = $this->get_toast();
 		require MLPP_PLUGIN_DIR . 'admin/views/settings.php';
+	}
+
+	public function handle_activate_license(): void {
+		MLPP_Security::check_admin();
+		MLPP_Security::verify_nonce( 'mlpp_activate_license' );
+		$raw  = isset( $_POST['mlpp_license_key'] ) ? sanitize_text_field( wp_unslash( (string) $_POST['mlpp_license_key'] ) ) : '';
+		$res  = MLPP_License::activate( $raw );
+		$type = $res['ok'] ? 'success' : 'error';
+		$this->redirect_with_toast(
+			admin_url( 'admin.php?page=mlpp-settings&tab=cfg-activation' ),
+			$res['message'],
+			$type
+		);
+	}
+
+	public function handle_deactivate_license(): void {
+		MLPP_Security::check_admin();
+		MLPP_Security::verify_nonce( 'mlpp_deactivate_license' );
+		MLPP_License::deactivate();
+		$this->redirect_with_toast(
+			admin_url( 'admin.php?page=mlpp-settings&tab=cfg-activation' ),
+			'Licença desativada. Voltando para Free.',
+			'success'
+		);
+	}
+
+	public function handle_save_brand(): void {
+		MLPP_Security::check_admin();
+		MLPP_Security::verify_nonce( 'mlpp_save_brand' );
+		$raw   = isset( $_POST['mlpp_brand'] ) ? wp_unslash( (array) $_POST['mlpp_brand'] ) : [];
+		$clean = [
+			'ml_brand'      => sanitize_hex_color( (string) ( $raw['ml_brand']      ?? '#155e6f' ) ) ?: '#155e6f',
+			'ml_brand_dark' => sanitize_hex_color( (string) ( $raw['ml_brand_dark'] ?? '#114b5a' ) ) ?: '#114b5a',
+			'ml_ink'        => sanitize_hex_color( (string) ( $raw['ml_ink']        ?? '#102a43' ) ) ?: '#102a43',
+		];
+		update_option( 'mlpp_brand', $clean, false );
+		$this->redirect_with_toast(
+			admin_url( 'admin.php?page=mlpp-settings&tab=cfg-brand' ),
+			'Identidade visual atualizada.',
+			'success'
+		);
 	}
 
 	public function handle_save_popup(): void {

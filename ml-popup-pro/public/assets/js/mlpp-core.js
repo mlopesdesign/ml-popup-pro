@@ -1,4 +1,4 @@
-/* ML Popup Pro – Frontend Core v1.0.14 */
+/* ML Popup Pro – Frontend Core v1.1.0 */
 /* Vanilla JS – no external deps – blocker-friendly – first-party only */
 (function () {
   'use strict';

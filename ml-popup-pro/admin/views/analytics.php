@@ -49,8 +49,8 @@ $device_labels = [
 	<form method="get" id="mlpp-analytics-filters" class="mlpp-card" style="display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end;margin-bottom:16px;padding:14px 18px">
 		<input type="hidden" name="page" value="mlpp-analytics">
 		<div class="mlpp-field" style="margin:0;flex:1 1 160px">
-			<label for="mlpp-filter-period">Período</label>
-			<select id="mlpp-filter-period" name="period">
+			<label for="mlpp-filter-period">Período <?php if ( ! mlpp_is_premium() ) : ?><span class="mlpp-chip" style="background:#fef3c7;color:#92400e;font-size:10px;margin-left:4px">Pro</span><?php endif; ?></label>
+			<select id="mlpp-filter-period" name="period" <?php echo mlpp_is_premium() ? '' : 'disabled style="opacity:.5"'; ?>>
 				<option value="all"  <?php selected( $filters['period'] ?? 'all', 'all' );  ?>>Todos</option>
 				<option value="7d"   <?php selected( $filters['period'], '7d' );   ?>>Últimos 7 dias</option>
 				<option value="30d"  <?php selected( $filters['period'], '30d' );  ?>>Últimos 30 dias</option>
@@ -58,8 +58,8 @@ $device_labels = [
 			</select>
 		</div>
 		<div class="mlpp-field" style="margin:0;flex:1 1 200px">
-			<label for="mlpp-filter-popup">Popup</label>
-			<select id="mlpp-filter-popup" name="popup_id">
+			<label for="mlpp-filter-popup">Popup <?php if ( ! mlpp_is_premium() ) : ?><span class="mlpp-chip" style="background:#fef3c7;color:#92400e;font-size:10px;margin-left:4px">Pro</span><?php endif; ?></label>
+			<select id="mlpp-filter-popup" name="popup_id" <?php echo mlpp_is_premium() ? '' : 'disabled style="opacity:.5"'; ?>>
 				<option value="0">Todos os popups</option>
 				<?php foreach ( $popups as $p ) : ?>
 					<option value="<?php echo esc_attr( $p['id'] ); ?>" <?php selected( (int) ( $filters['popup_id'] ?? 0 ), (int) $p['id'] ); ?>>
@@ -69,8 +69,8 @@ $device_labels = [
 			</select>
 		</div>
 		<div class="mlpp-field" style="margin:0;flex:1 1 160px">
-			<label for="mlpp-filter-device">Dispositivo</label>
-			<select id="mlpp-filter-device" name="device">
+			<label for="mlpp-filter-device">Dispositivo <?php if ( ! mlpp_is_premium() ) : ?><span class="mlpp-chip" style="background:#fef3c7;color:#92400e;font-size:10px;margin-left:4px">Pro</span><?php endif; ?></label>
+			<select id="mlpp-filter-device" name="device" <?php echo mlpp_is_premium() ? '' : 'disabled style="opacity:.5"'; ?>>
 				<option value="">Todos</option>
 				<option value="desktop" <?php selected( $filters['device'], 'desktop' ); ?>>Desktop</option>
 				<option value="tablet"  <?php selected( $filters['device'], 'tablet' );  ?>>Tablet</option>
@@ -78,10 +78,16 @@ $device_labels = [
 			</select>
 		</div>
 		<div class="mlpp-actions" style="margin:0">
-			<button type="submit" class="button button-primary mlpp-btn">Aplicar</button>
+			<button type="submit" class="button button-primary mlpp-btn" <?php echo mlpp_is_premium() ? '' : 'disabled style="opacity:.5"'; ?>>Aplicar</button>
 			<a href="<?php echo esc_url( admin_url( 'admin.php?page=mlpp-analytics' ) ); ?>" class="button">Limpar</a>
 		</div>
 	</form>
+
+	<?php if ( ! mlpp_is_premium() ) : ?>
+		<div class="mlpp-note" style="margin-bottom:16px;background:#fef3c7;color:#92400e">
+			🔑 <strong>Modo Free.</strong> Filtros por período, popup e dispositivo estão disponíveis na versão Pro. Ative sua licença em <a href="<?php echo esc_url( admin_url( 'admin.php?page=mlpp-settings&tab=cfg-activation' ) ); ?>">Configurações → Ativação</a>.
+		</div>
+	<?php endif; ?>
 
 	<!-- TOTAIS POR EVENTO -->
 	<div class="mlpp-stat-grid">

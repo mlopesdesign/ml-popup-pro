@@ -4,7 +4,7 @@ Tags: popup, modal, lead capture, marketing, campaign
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 8.1
-Stable tag: 1.0.14
+Stable tag: 1.1.0
 License: GPL2+
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -28,6 +28,25 @@ Funcionalidades principais:
 * Import/Export: JSON
 * Segurança: nonces, sanitização, escaping, $wpdb->prepare, manage_options
 
+== Free vs Pro ==
+
+O plugin funciona em modo Free sem necessidade de licença. Ativando uma licença Pro libera:
+
+* A/B testing por popup com split de tráfego e analytics por variante
+* Goal tracking automático por CSS selector (conversão por clique em elemento)
+* Filtros avançados de Analytics (período, popup, dispositivo)
+* Templates sazonais: Black Friday, Natal, Exit Survey, Free Shipping Bar
+* Identidade visual customizada (CSS variables para todas as telas admin)
+* Hooks de extensibilidade para addons e integrações
+
+Ativação:
+
+1. Configurações → aba 🔑 Ativação
+2. Cole seu serial Pro
+3. Clique em Ativar
+
+A verificação é feita contra a Hub local (quando presente em `ml-popup-pro/hub/`) ou aceita seriais bem-formados em modo dev para teste.
+
 == Installation ==
 
 1. Envie a pasta `ml-popup-pro` para `/wp-content/plugins/`
@@ -35,6 +54,14 @@ Funcionalidades principais:
 3. Acesse ML Popup Pro no menu lateral
 
 == Changelog ==
+
+= 1.1.0 =
+* **Camada Free / Pro:** nova classe `MLPP_License` com helper global `mlpp_is_premium()`. Ativação por serial Pro libera os recursos premium; plugin continua funcionando Free sem licença.
+* **Aba 🔑 Ativação** nas Configurações: campo de serial, status (Free / Pro ativa / Pro expirada / inválido), botão ativar/desativar, lista de recursos Pro.
+* **Aba 🎨 Identidade visual** (Pro): cores da marca persistem como CSS variables (`--ml-brand`, `--ml-brand-dark`, `--ml-ink`) e refletem em todas as telas admin do plugin.
+* **Gate Free/Pro nas features da v1.0.13:** goal tracking automático, filtros de Analytics (período/popup/dispositivo) e templates sazonais (Black Friday, Natal, Exit Survey, Free Shipping) ficam disponíveis só com licença Pro. Free continua recebendo analytics por evento, criação de popups, regras, triggers e 8 templates base.
+* **Bootstrap pronto para Hub local:** quando a pasta `hub/` for colocada dentro do plugin, a verificação de licença passa automaticamente a ser feita pela Hub local via funções `mlpp_hub_verify_license()` e `mlpp_hub_is_enabled()`. Até lá, seriais com formato válido são aceitos em modo dev para teste.
+* **Identidade preservada:** slug/pasta/classes/options/tabelas inalterados. Update sobre v1.0.12, v1.0.13 ou v1.0.14 é transparente e mantém popups, configurações e opções.
 
 = 1.0.14 =
 * **Resiliência do auto-update:** o Updater agora testa HEAD em cada URL candidata (asset oficial / URL determinística / zipball do source) e retorna a primeira que responde 2xx/3xx. Bypassa instabilidades do CDN de GitHub Releases (`releases/download/`) que frequentemente retorna 504.
@@ -117,6 +144,9 @@ Funcionalidades principais:
 * Lançamento inicial.
 
 == Upgrade Notice ==
+
+= 1.1.0 =
+* Adiciona camada Free vs Pro: aba de Ativação por serial Pro, identidade visual customizável e gating das features premium. Free mantém as funcionalidades básicas. Update transparente sobre qualquer v1.0.x.
 
 = 1.0.14 =
 * Auto-update resiliente: bypass de instabilidades do CDN do GitHub Releases via fallback automático para zipball + mirrors configuráveis. Atualização recomendada para quem teve erro 504 no download.
