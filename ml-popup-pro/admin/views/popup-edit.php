@@ -13,6 +13,9 @@ $triggers      = is_array( $popup['triggers'] ?? null )      ? $popup['triggers'
 $rules         = is_array( $popup['rules'] ?? null )         ? $popup['rules']         : [];
 $storage_cfg   = is_array( $popup['storage_cfg'] ?? null )   ? $popup['storage_cfg']   : [];
 $goal_selectors = is_array( $popup['goal_selectors'] ?? null ) ? $popup['goal_selectors'] : [];
+$variant_group_id = (int) ( $popup['variant_group_id'] ?? 0 );
+$variant_label    = (string) ( $popup['variant_label'] ?? '' );
+$variant_split    = (int) ( $popup['variant_split'] ?? 100 );
 
 $type_labels = [ 'center_modal'=>'Modal Central','bottom_bar'=>'Barra Inferior','slide_in'=>'Slide-in','fullscreen_overlay'=>'Fullscreen','floating_box'=>'Caixa Flutuante' ];
 
@@ -387,6 +390,25 @@ $image_id  = (int) mlppe_v( $popup, 'image_attachment_id', 0 );
 				<label>Marcar como conversão ao clicar em (CSS selectors, um por linha)</label>
 				<textarea name="mlpp_popup[goal_selectors]" rows="3" placeholder=".single_add_to_cart_button&#10;form.checkout .submit&#10;#comprar-agora"><?php echo esc_textarea( implode( "\n", (array) $goal_selectors ) ); ?></textarea>
 				<p class="description">Quando o visitante clicar em qualquer elemento do popup que case um desses seletores CSS, o evento <code>conversion</code> é registrado automaticamente (uma vez por popup). Útil para medir cliques em botões WooCommerce, formulários de captura, links de checkout etc.</p>
+			</div>
+
+			<div class="mlpp-divider"></div>
+			<p class="mlpp-section-title">🆔 A/B Testing <span class="mlpp-chip" style="background:#fef3c7;color:#92400e;font-size:10px;margin-left:4px">Pro</span></p>
+			<div class="mlpp-grid-2">
+				<div class="mlpp-field">
+					<label>Grupo de variante (mesmo número = mesmo teste)</label>
+					<input type="number" min="0" step="1" name="mlpp_popup[variant_group_id]" value="<?php echo esc_attr( $variant_group_id ); ?>" placeholder="ex: 1" <?php echo mlpp_is_premium() ? '' : 'disabled style="opacity:.5"'; ?>>
+					<p class="description">Crie 2 (ou mais) popups com o mesmo grupo, defina pesos diferentes, e o plugin escolhe UMA variante por visitante via cookie determinístico.</p>
+				</div>
+				<div class="mlpp-field">
+					<label>Rótulo desta variante</label>
+					<input type="text" maxlength="50" name="mlpp_popup[variant_label]" value="<?php echo esc_attr( $variant_label ); ?>" placeholder="ex: controle, tratamento-azul" <?php echo mlpp_is_premium() ? '' : 'disabled style="opacity:.5"'; ?>>
+				</div>
+				<div class="mlpp-field">
+					<label>Peso desta variante (0–100, padrão 50)</label>
+					<input type="number" min="0" max="100" step="1" name="mlpp_popup[variant_split]" value="<?php echo esc_attr( $variant_split ); ?>" <?php echo mlpp_is_premium() ? '' : 'disabled style="opacity:.5"'; ?>>
+					<p class="description">Em um grupo com 2 variantes, <code>50/50</code> divide igualmente. <code>0</code> desativa esta variante.</p>
+				</div>
 			</div>
 		</section>
 

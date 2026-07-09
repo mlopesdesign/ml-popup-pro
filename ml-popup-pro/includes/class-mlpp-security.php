@@ -43,6 +43,9 @@ final class MLPP_Security {
 			'rules'              => wp_json_encode( self::sanitize_rules( $raw['rules'] ?? [] ) ),
 			'storage_cfg'        => wp_json_encode( self::sanitize_storage_cfg( $raw['storage_cfg'] ?? [] ) ),
 			'goal_selectors'     => wp_json_encode( self::sanitize_goal_selectors( $raw['goal_selectors'] ?? '' ) ),
+			'variant_group_id'  => absint( $raw['variant_group_id'] ?? 0 ),
+			'variant_label'      => sanitize_text_field( $raw['variant_label'] ?? '' ),
+			'variant_split'      => max( 0, min( 100, (int) ( $raw['variant_split'] ?? 100 ) ) ),
 			'template_id'        => sanitize_key( $raw['template_id'] ?? '' ),
 		];
 	}

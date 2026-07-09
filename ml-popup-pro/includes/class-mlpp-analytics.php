@@ -8,17 +8,18 @@ final class MLPP_Analytics {
 		return $wpdb->prefix . 'mlpp_events';
 	}
 
-	public function record( int $popup_id, string $event_type, string $page_url = '', string $device_type = '' ): void {
+	public function record( int $popup_id, string $event_type, string $page_url = '', string $device_type = '', string $variant_label = '' ): void {
 		$settings = get_option( 'mlpp_settings', [] );
 		if ( ! empty( $settings['disable_analytics'] ) && $settings['disable_analytics'] === '1' ) return;
 		global $wpdb;
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery
 		$wpdb->insert( $this->table(), [
-			'popup_id'    => $popup_id,
-			'event_type'  => sanitize_key( $event_type ),
-			'page_url'    => esc_url_raw( $page_url ),
-			'device_type' => sanitize_key( $device_type ),
-			'created_at'  => current_time( 'mysql' ),
+			'popup_id'      => $popup_id,
+			'variant_label' => sanitize_text_field( $variant_label ),
+			'event_type'    => sanitize_key( $event_type ),
+			'page_url'      => esc_url_raw( $page_url ),
+			'device_type'   => sanitize_key( $device_type ),
+			'created_at'    => current_time( 'mysql' ),
 		] );
 	}
 
@@ -198,7 +199,7 @@ final class MLPP_Analytics {
 			wp_send_json_error( 'rate_limited' );
 		}
 
-		$this->record( $popup_id, $event_type, $page_url, $device );
+		$this->record( $popup_id, $event_type, $page_url, $device, (string) ( $_POST['variant_label'] ?? '' ) );
 		wp_send_json_success();
 	}
 

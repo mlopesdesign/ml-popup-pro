@@ -16,6 +16,9 @@ final class MLPP_Rules {
 
 		usort( $eligible, fn( $a, $b ) => (int) $b['priority'] - (int) $a['priority'] );
 
+		// A/B testing: collapse each `variant_group_id` to one variant per visitor.
+		$eligible = $this->select_variants( $eligible );
+
 		$settings = get_option( 'mlpp_settings', [] );
 		$allow_multiple = ! empty( $settings['allow_multiple_popups'] ) && $settings['allow_multiple_popups'] === '1';
 
@@ -41,6 +44,73 @@ final class MLPP_Rules {
 			}
 		}
 		return $popup;
+	}
+
+	/**
+	 * A/B variant selection: when multiple active popups share a
+	 * `variant_group_id`, only one is shown per request, chosen by
+	 * the relative `variant_split` weights. Deterministic per
+	 * `(visitor cookie, group_id)` so the same visitor keeps seeing
+	 * the same variant across page loads.
+	 *
+	 * @return array<int, array>  Selected popups (always at most one per group).
+	 */
+	private function select_variants( array $eligible ): array {
+		$groups = [];
+		foreach ( $eligible as $p ) {
+			$gid = (int) ( $p['variant_group_id'] ?? 0 );
+			if ( $gid <= 0 ) {
+				$groups['_solo'][] = $p;
+				continue;
+			}
+			if ( ! isset( $groups[ $gid ] ) ) {
+				$groups[ $gid ] = [];
+			}
+			$groups[ $gid ][] = $p;
+		}
+
+		$selected = [];
+		foreach ( $groups as $gid => $variants ) {
+			if ( '_solo' === $gid ) {
+				foreach ( $variants as $v ) {
+					$selected[] = $v;
+				}
+				continue;
+			}
+			if ( count( $variants ) === 1 ) {
+				$selected[] = $variants[0];
+				continue;
+			}
+			// Weighted pick per visitor. Split must sum > 0.
+			$sum = 0.0;
+			foreach ( $variants as $v ) {
+				$sum += max( 1, (int) ( $v['variant_split'] ?? 100 ) );
+			}
+			$bucket = (int) ( ( $this->visitor_hash( (int) $gid ) % 1000000 ) / 1000000 * $sum );
+			$acc = 0.0;
+			$picked = $variants[0];
+			foreach ( $variants as $v ) {
+				$acc += max( 1, (int) ( $v['variant_split'] ?? 100 ) );
+				if ( $bucket <= $acc ) {
+					$picked = $v;
+					break;
+				}
+			}
+			$selected[] = $picked;
+		}
+
+		return $selected;
+	}
+
+	private function visitor_hash( int $gid ): int {
+		$cookie = isset( $_COOKIE[ 'mlpp_visitor_' . $gid ] ) ? (string) $_COOKIE[ 'mlpp_visitor_' . $gid ] : '';
+		if ( '' === $cookie ) {
+			$cookie = wp_generate_password( 12, false );
+			if ( ! headers_sent() ) {
+				setcookie( 'mlpp_visitor_' . $gid, $cookie, time() + YEAR_IN_SECONDS, COOKIEPATH, COOKIE_DOMAIN, is_ssl(), true );
+			}
+		}
+		return abs( crc32( $cookie . '|' . $gid ) );
 	}
 
 	private function popup_matches( array $popup ): bool {

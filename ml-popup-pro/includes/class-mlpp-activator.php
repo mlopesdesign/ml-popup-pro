@@ -7,7 +7,7 @@ final class MLPP_Activator {
 	 * Schema version. Bump whenever the table structure changes so that
 	 * maybe_upgrade() re-runs the migration on existing installs.
 	 */
-	const DB_VERSION = '4';
+	const DB_VERSION = '5';
 
 	/**
 	 * Columns expected on the popups table, with the DDL used to (re)create
@@ -43,6 +43,9 @@ final class MLPP_Activator {
 			'rules'               => "LONGTEXT        NULL",
 			'storage_cfg'         => "LONGTEXT        NULL",
 			'goal_selectors'      => "LONGTEXT        NULL",
+			'variant_group_id'    => "INT             NOT NULL DEFAULT 0",
+			'variant_label'       => "VARCHAR(50)     NOT NULL DEFAULT ''",
+			'variant_split'       => "INT             NOT NULL DEFAULT 100",
 			'template_id'         => "VARCHAR(50)     NOT NULL DEFAULT ''",
 		];
 	}
@@ -61,12 +64,14 @@ final class MLPP_Activator {
 			id                   BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
 {$cols}			created_at           DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
 			updated_at           DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-			PRIMARY KEY  (id)
+			PRIMARY KEY  (id),
+			KEY variant_group_id (variant_group_id)
 		) {$charset};";
 
 		$sql_events = "CREATE TABLE {$p}mlpp_events (
 			id          BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
 			popup_id    BIGINT UNSIGNED NOT NULL DEFAULT 0,
+			variant_label VARCHAR(50)  NOT NULL DEFAULT '',
 			event_type  VARCHAR(50)     NOT NULL DEFAULT '',
 			page_url    VARCHAR(2083)   NOT NULL DEFAULT '',
 			device_type VARCHAR(20)     NOT NULL DEFAULT '',
@@ -74,7 +79,8 @@ final class MLPP_Activator {
 			PRIMARY KEY  (id),
 			KEY popup_id (popup_id),
 			KEY event_type (event_type),
-			KEY created_at (created_at)
+			KEY created_at (created_at),
+			KEY variant_label (variant_label)
 		) {$charset};";
 
 		$sql_meta = "CREATE TABLE {$p}mlpp_meta (

@@ -78,6 +78,8 @@ final class MLPP_Frontend {
 				'triggers'         => is_array( $triggers )      ? $triggers      : [],
 				'storage_cfg'      => is_array( $storage_cfg )   ? $storage_cfg   : [],
 				'goal_selectors'   => array_values( array_filter( array_map( 'strval', $goal_selectors ) ) ),
+				'variant_label'    => (string) ( $p['variant_label'] ?? '' ),
+				'variant_group_id' => (int) ( $p['variant_group_id'] ?? 0 ),
 			];
 
 			/**
@@ -99,6 +101,8 @@ final class MLPP_Frontend {
 			'storage_method'  => esc_attr( $s['storage_method']           ?? 'cookie' ),
 			'expiration_days' => absint( $s['default_expiration_days']     ?? 30 ),
 			'consent_mode'    => esc_attr( $s['consent_mode']              ?? 'off' ),
+			'webhook_url'     => (string) ( $s['webhook_url']              ?? '' ),
+			'webhook_enabled' => (string) ( $s['webhook_enabled']          ?? '0' ),
 		];
 	}
 

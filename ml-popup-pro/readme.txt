@@ -4,7 +4,7 @@ Tags: popup, modal, lead capture, marketing, campaign
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 8.1
-Stable tag: 1.2.0
+Stable tag: 1.3.0
 License: GPL2+
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -54,6 +54,12 @@ A verificação é feita contra a Hub local (quando presente em `ml-popup-pro/hu
 3. Acesse ML Popup Pro no menu lateral
 
 == Changelog ==
+
+= 1.3.0 =
+* **A/B testing de popups (Pro):** nova tabela com colunas `variant_group_id`, `variant_label`, `variant_split` no DB_VERSION 5. Crie 2+ popups com o mesmo `variant_group_id`, defina pesos diferentes (0–100), e o `Rules` resolve UMA variante por visitante via cookie determinístico. A variante escolhida fica gravada em todos os eventos (`mlpp_events.variant_label`) para análise de CTR/conversão por variante.
+* **Webhook de conversão (Free + Pro):** novo campo em Configurações > Global com `webhook_url` e `webhook_enabled`. Quando o evento `conversion` dispara (manualmente ou via goal tracking por CSS selector), o frontend faz POST em JSON para a URL configurada com `{ event, popup_id, variant_label, page_url, device, ts }`. Use para integrar com RD Station, Mailchimp, HubSpot, n8n, etc. — `no-cors` + `keepalive` para não travar UX.
+* **`Analytics::record()` agora aceita `variant_label`:** schema do wp_mlpp_events ganha coluna `variant_label` + índice, propagada para `get_*_stats` para permitir filtro por variante nas próximas versões do dashboard.
+* **Frontend:** payload do `mlppData.popups[]` inclui `variant_label` e `variant_group_id` para o JS frontend ter contexto da variante que está exibindo.
 
 = 1.2.0 =
 * **Integração real com a ML License Hub:** validação de serial agora bate no endpoint oficial `https://license.mlopesdesign.com.br/api/license.php` via POST (action=validate_license, product_id=ml-popup-pro, license_key, domain, site_url, version). Cache local de 12h com botões para forçar re-verificação.
@@ -151,6 +157,9 @@ A verificação é feita contra a Hub local (quando presente em `ml-popup-pro/hu
 * Lançamento inicial.
 
 == Upgrade Notice ==
+
+= 1.3.0 =
+* Adiciona A/B testing de popups (com peso por variante, persistência via cookie) e webhook de conversão para integrar com RD Station / Mailchimp / HubSpot. Atualize para já vir com DB_VERSION 5 e auto-migration transparente.
 
 = 1.2.0 =
 * Validação de serial Pro passa a usar a ML License Hub oficial. Atualize para destravar checagem de domínio, expiração e plano via painel central.

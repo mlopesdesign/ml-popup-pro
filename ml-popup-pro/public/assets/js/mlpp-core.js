@@ -1,4 +1,4 @@
-/* ML Popup Pro – Frontend Core v1.2.0 */
+/* ML Popup Pro – Frontend Core v1.3.0 */
 /* Vanilla JS – no external deps – blocker-friendly – first-party only */
 (function () {
   'use strict';
@@ -193,16 +193,32 @@
   }
 
   /* ── Analytics ───────────────────────────────── */
-  function track(popupId, eventType) {
+  function track(popupId, eventType, variantLabel) {
     if (!ajaxUrl) return;
     var fd = new FormData();
     fd.append('action', 'mlpp_event');
     fd.append('nonce', nonce);
     fd.append('popup_id', popupId);
     fd.append('event_type', eventType);
+    fd.append('variant_label', variantLabel || '');
     fd.append('page_url', window.location.href);
     fd.append('device_type', getDevice());
     fetch(ajaxUrl, { method: 'POST', body: fd }).catch(function(){});
+  }
+
+  /* ── Webhook (conversion) ───────────────────── */
+  function fireWebhook(payload) {
+    var url = settings.webhook_url;
+    if (!url || settings.webhook_enabled !== '1') return;
+    try {
+      fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+        mode: 'no-cors',
+        keepalive: true
+      }).catch(function(){});
+    } catch (e) {}
   }
 
   /* ── Build popup element ─────────────────────── */
@@ -599,13 +615,14 @@
     attachKeyboard(popup, el);
     attachGoalTracking(popup, el);
     markShown(popup);
-    track(popup.id, 'impression');
+    track(popup.id, 'impression', popup.variant_label || '');
   }
 
   /* Goal tracking: fire conversion once when the visitor clicks any
      element inside the popup that matches a configured CSS selector.
      Marked per-popup via a guard so a single click does not generate
-     multiple conversion events. */
+     multiple conversion events. When a webhook is configured we also
+     POST the conversion payload to it. */
   var goalFired = Object.create(null);
   function attachGoalTracking(popup, el) {
     var selectors = Array.isArray(popup.goal_selectors) ? popup.goal_selectors : [];
@@ -621,7 +638,15 @@
           if (target.closest(sel)) {
             if (goalFired[pid]) return;
             goalFired[pid] = 1;
-            track(pid, 'conversion');
+            track(pid, 'conversion', popup.variant_label || '');
+            fireWebhook({
+              event: 'conversion',
+              popup_id: pid,
+              variant_label: popup.variant_label || '',
+              page_url: window.location.href,
+              device: getDevice(),
+              ts: Date.now()
+            });
             return;
           }
         } catch (err) { /* invalid selector — ignore */ }

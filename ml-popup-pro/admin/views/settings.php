@@ -68,10 +68,21 @@ function mlpp_schk( array $settings, string $key ): string {
 							<option value="functional" <?php echo mlpp_ssel( $settings, 'consent_mode', 'functional' ); ?>>Apenas funcional</option>
 						</select>
 					</div>
-					<div class="mlpp-field"><label><input type="checkbox" name="mlpp_settings[allow_multiple_popups]" value="1" <?php echo mlpp_schk( $settings, 'allow_multiple_popups' ); ?>> Permitir múltiplos popups por página</label></div>
-					<div class="mlpp-field"><label><input type="checkbox" name="mlpp_settings[disable_analytics]" value="1" <?php echo mlpp_schk( $settings, 'disable_analytics' ); ?>> Desativar analytics local</label></div>
-					<div class="mlpp-field"><label><input type="checkbox" name="mlpp_settings[delete_data_on_uninstall]" value="1" <?php echo mlpp_schk( $settings, 'delete_data_on_uninstall' ); ?>> Apagar dados ao desinstalar</label></div>
+<div class="mlpp-field"><label><input type="checkbox" name="mlpp_settings[allow_multiple_popups]" value="1" <?php echo mlpp_schk( $settings, 'allow_multiple_popups' ); ?>> Permitir múltiplos popups por página</label></div>
+				<div class="mlpp-field"><label><input type="checkbox" name="mlpp_settings[disable_analytics]" value="1" <?php echo mlpp_schk( $settings, 'disable_analytics' ); ?>> Desativar analytics local</label></div>
+				<div class="mlpp-field"><label><input type="checkbox" name="mlpp_settings[delete_data_on_uninstall]" value="1" <?php echo mlpp_schk( $settings, 'delete_data_on_uninstall' ); ?>> Apagar dados ao desinstalar</label></div>
+			</div>
+
+			<div class="mlpp-divider"></div>
+			<p class="mlpp-section-title">🪝 Webhook de conversão</p>
+			<div class="mlpp-grid-2">
+				<div class="mlpp-field" style="grid-column:1/-1">
+					<label>URL do webhook (POST em JSON quando o evento <code>conversion</code> dispara)</label>
+					<input type="url" name="mlpp_settings[webhook_url]" value="<?php echo esc_attr( $settings['webhook_url'] ?? '' ); ?>" placeholder="https://seudominio.com/webhooks/ml-popup-pro">
+					<p class="description">Recebe um JSON com <code>event</code>, <code>popup_id</code>, <code>variant_label</code>, <code>page_url</code>, <code>device</code> e <code>ts</code>. Use para integrar com RD Station, Mailchimp, HubSpot, etc.</p>
 				</div>
+				<div class="mlpp-field"><label><input type="checkbox" name="mlpp_settings[webhook_enabled]" value="1" <?php echo mlpp_schk( $settings, 'webhook_enabled' ); ?>> Ativar webhook de conversão</label></div>
+			</div>
 				<div class="mlpp-actions" style="margin-top:18px;">
 					<button type="submit" class="button button-primary mlpp-btn">Salvar configurações</button>
 				</div>
