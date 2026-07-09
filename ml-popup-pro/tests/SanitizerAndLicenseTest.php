@@ -37,17 +37,22 @@ final class SanitizerAndLicenseTest extends TestCase {
 		$clean = MLPP_Security::sanitize_popup( [
 			'name'           => 'p',
 			'goal_selectors' => [
-				'.safe-selector',
-				'#another-safe',
+				'.safe-selector',         // valid
+				'#another-safe',         // valid
+				'input[type="email"]',   // valid (whitelist includes brackets)
+				'input[type=submit]',    // valid
 				'javascript:alert(1)',   // bad scheme
 				'data:text/html',         // bad scheme
-				'a>b',                    // bad chars
-				'<script>',
-				'a]b',                    // not in whitelist
+				'<script>',               // bad chars
+				'a>b',                    // bad chars (< >)
+				'foo bar\nbaz',           // newline
 			],
 		] );
 		$decoded = json_decode( $clean['goal_selectors'], true );
-		$this->assertSame( [ '.safe-selector', '#another-safe' ], $decoded );
+		$this->assertSame(
+			[ '.safe-selector', '#another-safe', 'input[type="email"]', 'input[type=submit]' ],
+			$decoded
+		);
 	}
 
 	public function test_sanitize_popup_image_radius_passes_through(): void {
