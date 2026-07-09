@@ -68,7 +68,7 @@ final class MLPP_Storage {
 	}
 
 	public function decode_popup( array $row ): array {
-		foreach ( [ 'design','triggers','rules','storage_cfg' ] as $f ) {
+		foreach ( [ 'design','triggers','rules','storage_cfg','goal_selectors' ] as $f ) {
 			$val = $row[ $f ] ?? null;
 			if ( is_string( $val ) ) {
 				$d   = json_decode( $val, true );
@@ -92,7 +92,7 @@ final class MLPP_Storage {
 			$import_id = absint( $popup['id'] ?? 0 );
 
 			// Accept JSON-string or array forms for the structured fields, then sanitize the whole record.
-			foreach ( [ 'design','triggers','rules','storage_cfg' ] as $f ) {
+			foreach ( [ 'design','triggers','rules','storage_cfg','goal_selectors' ] as $f ) {
 				if ( isset( $popup[ $f ] ) && is_string( $popup[ $f ] ) ) {
 					$decoded     = json_decode( $popup[ $f ], true );
 					$popup[ $f ] = is_array( $decoded ) ? $decoded : [];

@@ -1,4 +1,4 @@
-/* ML Popup Pro – Frontend Core v1.0.12 */
+/* ML Popup Pro – Frontend Core v1.0.13 */
 /* Vanilla JS – no external deps – blocker-friendly – first-party only */
 (function () {
   'use strict';
@@ -597,8 +597,36 @@
 
     container.appendChild(el);
     attachKeyboard(popup, el);
+    attachGoalTracking(popup, el);
     markShown(popup);
     track(popup.id, 'impression');
+  }
+
+  /* Goal tracking: fire conversion once when the visitor clicks any
+     element inside the popup that matches a configured CSS selector.
+     Marked per-popup via a guard so a single click does not generate
+     multiple conversion events. */
+  var goalFired = Object.create(null);
+  function attachGoalTracking(popup, el) {
+    var selectors = Array.isArray(popup.goal_selectors) ? popup.goal_selectors : [];
+    if (!selectors.length) return;
+    var pid = popup.id;
+    el.addEventListener('click', function(e) {
+      var target = e.target;
+      if (!target || !target.closest) return;
+      for (var i = 0; i < selectors.length; i++) {
+        var sel = selectors[i];
+        if (!sel) continue;
+        try {
+          if (target.closest(sel)) {
+            if (goalFired[pid]) return;
+            goalFired[pid] = 1;
+            track(pid, 'conversion');
+            return;
+          }
+        } catch (err) { /* invalid selector — ignore */ }
+      }
+    });
   }
 
   /* ── Trigger logic ───────────────────────────── */

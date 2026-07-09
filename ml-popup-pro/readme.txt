@@ -4,7 +4,7 @@ Tags: popup, modal, lead capture, marketing, campaign
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 8.1
-Stable tag: 1.0.12
+Stable tag: 1.0.13
 License: GPL2+
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -35,6 +35,14 @@ Funcionalidades principais:
 3. Acesse ML Popup Pro no menu lateral
 
 == Changelog ==
+
+= 1.0.13 =
+* **Proteção contra abuso no analytics:** rate limiting no endpoint AJAX de eventos (transient por IP + popup + tipo de evento, janela padrão de 5s). Visitor não consegue mais inflar a tabela de eventos em loop.
+* **Filtros no dashboard de analytics:** nova aba Analytics agora aceita filtros por período (7/30/90 dias, todos), popup específico e dispositivo (desktop/tablet/mobile), com recálculo server-side.
+* **Quatro novos templates prontos:** Black Friday, Natal, Exit Survey e Free Shipping Bar — todos com conteúdo e cores pré-configurados.
+* **Goal tracking automático:** novo campo "Marcar como conversão ao clicar em" (CSS selector). Quando o visitante clica em um elemento do popup que casa o seletor, o evento `conversion` é disparado automaticamente, sem precisar de JS manual.
+* **Hooks de extensibilidade:** filtros `mlpp_eligible_popups`, `mlpp_popup_render_data`, `mlpp_default_design`, `mlpp_event_rate_limit_window` e `mlpp_goal_selectors` permitem customização por tema, addon ou integration sem fork.
+* **Estatísticas por dispositivo:** dashboard Analytics mostra breakdown por tipo de dispositivo (desktop / tablet / mobile) para cada evento.
 
 = 1.0.12 =
 * **Menu administrativo legível:** reforçado o contraste do item ML Popup Pro nos estados ativo, aberto, foco e hover, impedindo texto e ícone brancos sobre fundo claro.
@@ -104,6 +112,9 @@ Funcionalidades principais:
 * Lançamento inicial.
 
 == Upgrade Notice ==
+
+= 1.0.13 =
+* Adiciona rate limiting no AJAX de eventos, filtros de período/popup/dispositivo no analytics, goal tracking automático por CSS selector, quatro novos templates e hooks de extensibilidade.
 
 = 1.0.12 =
 * Corrige o contraste do menu, adiciona transparência independente para o fundo do pop-up e elimina barras de rolagem internas visíveis.

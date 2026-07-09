@@ -48,9 +48,13 @@ final class MLPP_Frontend {
 	private function prepare_frontend_popups( array $popups ): array {
 		$out = [];
 		foreach ( $popups as $p ) {
-			$design      = is_string( $p['design']      ?? null ) ? json_decode( (string) $p['design'],      true ) : (array)( $p['design']      ?? [] );
-			$triggers    = is_string( $p['triggers']    ?? null ) ? json_decode( (string) $p['triggers'],    true ) : (array)( $p['triggers']    ?? [] );
-			$storage_cfg = is_string( $p['storage_cfg'] ?? null ) ? json_decode( (string) $p['storage_cfg'], true ) : (array)( $p['storage_cfg'] ?? [] );
+			$design        = is_string( $p['design']        ?? null ) ? json_decode( (string) $p['design'],        true ) : (array)( $p['design']        ?? [] );
+			$triggers      = is_string( $p['triggers']      ?? null ) ? json_decode( (string) $p['triggers'],      true ) : (array)( $p['triggers']      ?? [] );
+			$storage_cfg   = is_string( $p['storage_cfg']   ?? null ) ? json_decode( (string) $p['storage_cfg'],   true ) : (array)( $p['storage_cfg']   ?? [] );
+			$goal_selectors = is_string( $p['goal_selectors'] ?? null ) ? json_decode( (string) $p['goal_selectors'], true ) : (array)( $p['goal_selectors'] ?? [] );
+			if ( ! is_array( $goal_selectors ) ) {
+				$goal_selectors = [];
+			}
 
 			$out[] = [
 				'id'               => (int) $p['id'],
@@ -70,10 +74,21 @@ final class MLPP_Frontend {
 				'btn_secondary_text'=> esc_html( $p['btn_secondary_text'] ?? '' ),
 				'btn_secondary_url' => esc_url( $p['btn_secondary_url']  ?? '' ),
 				'custom_html'      => wp_kses_post( $p['custom_html']   ?? '' ),
-				'design'           => is_array( $design )      ? $design      : [],
-				'triggers'         => is_array( $triggers )    ? $triggers    : [],
-				'storage_cfg'      => is_array( $storage_cfg ) ? $storage_cfg : [],
+				'design'           => is_array( $design )        ? $design        : [],
+				'triggers'         => is_array( $triggers )      ? $triggers      : [],
+				'storage_cfg'      => is_array( $storage_cfg )   ? $storage_cfg   : [],
+				'goal_selectors'   => array_values( array_filter( array_map( 'strval', $goal_selectors ) ) ),
 			];
+
+			/**
+			 * Filters the data array sent to the frontend for a single popup.
+			 * Allows themes and addons to add or override fields (e.g. custom
+			 * analytics payloads, AB-test variants, extra render data).
+			 *
+			 * @param array $data Render-ready popup data.
+			 * @param array $p    Raw popup row from the database.
+			 */
+			$out[ count( $out ) - 1 ] = (array) apply_filters( 'mlpp_popup_render_data', $out[ count( $out ) - 1 ], $p );
 		}
 		return $out;
 	}

@@ -7,7 +7,7 @@ final class MLPP_Activator {
 	 * Schema version. Bump whenever the table structure changes so that
 	 * maybe_upgrade() re-runs the migration on existing installs.
 	 */
-	const DB_VERSION = '3';
+	const DB_VERSION = '4';
 
 	/**
 	 * Columns expected on the popups table, with the DDL used to (re)create
@@ -42,6 +42,7 @@ final class MLPP_Activator {
 			'triggers'            => "LONGTEXT        NULL",
 			'rules'               => "LONGTEXT        NULL",
 			'storage_cfg'         => "LONGTEXT        NULL",
+			'goal_selectors'      => "LONGTEXT        NULL",
 			'template_id'         => "VARCHAR(50)     NOT NULL DEFAULT ''",
 		];
 	}

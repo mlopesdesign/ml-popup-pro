@@ -160,11 +160,13 @@ final class MLPP_Admin {
 
 	public function page_analytics(): void {
 		MLPP_Security::check_admin();
-		$totals  = $this->analytics->get_totals();
-		$recent  = $this->analytics->get_recent_events( 25 );
-		$best    = $this->analytics->get_best_popup();
-		$popups  = $this->storage->get_all_popups();
-		$toast   = $this->get_toast();
+		$filters          = $this->analytics->parse_filters( $_GET );
+		$totals           = $this->analytics->get_totals( $filters );
+		$recent           = $this->analytics->get_recent_events( 25, $filters );
+		$best             = $this->analytics->get_best_popup( $filters );
+		$device_breakdown = $this->analytics->get_device_breakdown( $filters );
+		$popups           = $this->storage->get_all_popups();
+		$toast            = $this->get_toast();
 		require MLPP_PLUGIN_DIR . 'admin/views/analytics.php';
 	}
 

@@ -42,6 +42,7 @@ final class MLPP_Security {
 			'triggers'           => wp_json_encode( self::sanitize_triggers( $raw['triggers'] ?? [] ) ),
 			'rules'              => wp_json_encode( self::sanitize_rules( $raw['rules'] ?? [] ) ),
 			'storage_cfg'        => wp_json_encode( self::sanitize_storage_cfg( $raw['storage_cfg'] ?? [] ) ),
+			'goal_selectors'     => wp_json_encode( self::sanitize_goal_selectors( $raw['goal_selectors'] ?? '' ) ),
 			'template_id'        => sanitize_key( $raw['template_id'] ?? '' ),
 		];
 	}
@@ -148,6 +149,27 @@ final class MLPP_Security {
 			'click_expire_days'       => absint( $raw['click_expire_days'] ?? 30 ),
 			'max_impressions'         => absint( $raw['max_impressions'] ?? 0 ),
 		];
+	}
+
+	/**
+	 * Goal selectors (one per line). Stored as a list of strings;
+	 * invalid/empty lines are dropped. Used by the frontend to
+	 * fire a `conversion` event when the visitor clicks a matching
+	 * element inside the popup.
+	 */
+	private static function sanitize_goal_selectors( $raw ): array {
+		$raw_str = is_array( $raw ) ? implode( "\n", array_map( 'strval', $raw ) ) : (string) $raw;
+		$lines   = preg_split( '/[\r\n]+/', $raw_str );
+		$clean   = [];
+		foreach ( (array) $lines as $line ) {
+			$line = trim( sanitize_text_field( $line ) );
+			// Reject obviously broken selectors (no closing bracket, parens, etc).
+			if ( '' === $line ) continue;
+			if ( strlen( $line ) > 500 ) continue;
+			if ( preg_match( '/[<>"\'`]|javascript:/i', $line ) ) continue;
+			$clean[] = $line;
+		}
+		return array_values( array_unique( $clean ) );
 	}
 
 	public static function sanitize_settings( array $raw ): array {

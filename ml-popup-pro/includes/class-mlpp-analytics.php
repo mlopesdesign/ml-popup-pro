@@ -22,50 +22,157 @@ final class MLPP_Analytics {
 		] );
 	}
 
-	public function get_totals(): array {
+	public function get_totals( array $filters = [] ): array {
 		global $wpdb;
 		$t = $this->table();
+		[ $where, $params ] = $this->build_where( $filters );
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery
-		$rows = $wpdb->get_results( "SELECT event_type, COUNT(*) as cnt FROM {$t} GROUP BY event_type", ARRAY_A );
+		$sql = "SELECT event_type, COUNT(*) as cnt FROM {$t} {$where} GROUP BY event_type";
+		$rows = $params
+			? $wpdb->get_results( $wpdb->prepare( $sql, $params ), ARRAY_A )
+			: $wpdb->get_results( $sql, ARRAY_A );
 		$out  = [];
 		foreach ( (array) $rows as $row ) $out[ $row['event_type'] ] = (int) $row['cnt'];
 		return $out;
 	}
 
-	public function get_popup_stats( int $popup_id ): array {
+	public function get_popup_stats( int $popup_id, array $filters = [] ): array {
 		global $wpdb;
 		$t = $this->table();
+		$filters['popup_id'] = $popup_id;
+		[ $where, $params ] = $this->build_where( $filters );
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery
-		$rows = $wpdb->get_results( $wpdb->prepare( "SELECT event_type, COUNT(*) as cnt FROM {$t} WHERE popup_id = %d GROUP BY event_type", $popup_id ), ARRAY_A );
+		$sql = "SELECT event_type, COUNT(*) as cnt FROM {$t} {$where} GROUP BY event_type";
+		$rows = $params
+			? $wpdb->get_results( $wpdb->prepare( $sql, $params ), ARRAY_A )
+			: $wpdb->get_results( $sql, ARRAY_A );
 		$out  = [];
 		foreach ( (array) $rows as $row ) $out[ $row['event_type'] ] = (int) $row['cnt'];
 		return $out;
 	}
 
-	public function get_best_popup(): ?array {
+	public function get_best_popup( array $filters = [] ): ?array {
 		global $wpdb;
 		$t = $this->table();
+		$filters['event_in'] = [ 'primary_click','secondary_click','image_click','conversion' ];
+		[ $where, $params ] = $this->build_where( $filters );
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery
-		$row = $wpdb->get_row( "SELECT popup_id, COUNT(*) as clicks FROM {$t} WHERE event_type IN ('primary_click','secondary_click','image_click','conversion') GROUP BY popup_id ORDER BY clicks DESC LIMIT 1", ARRAY_A );
+		$sql = "SELECT popup_id, COUNT(*) as clicks FROM {$t} {$where} GROUP BY popup_id ORDER BY clicks DESC LIMIT 1";
+		$row = $params
+			? $wpdb->get_row( $wpdb->prepare( $sql, $params ), ARRAY_A )
+			: $wpdb->get_row( $sql, ARRAY_A );
 		return is_array( $row ) ? $row : null;
 	}
 
-	public function get_recent_events( int $limit = 20 ): array {
+	public function get_recent_events( int $limit = 20, array $filters = [] ): array {
 		global $wpdb;
 		$t = $this->table();
+		[ $where, $params ] = $this->build_where( $filters );
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery
-		$rows = $wpdb->get_results( $wpdb->prepare( "SELECT * FROM {$t} ORDER BY created_at DESC LIMIT %d", $limit ), ARRAY_A );
+		$sql = "SELECT * FROM {$t} {$where} ORDER BY created_at DESC LIMIT %d";
+		$params[] = $limit;
+		$rows = $wpdb->get_results( $wpdb->prepare( $sql, $params ), ARRAY_A );
 		return is_array( $rows ) ? $rows : [];
 	}
 
-	public function get_popup_impressions_by_id(): array {
+	public function get_popup_impressions_by_id( array $filters = [] ): array {
 		global $wpdb;
 		$t = $this->table();
+		$filters['event_in'] = [ 'impression' ];
+		[ $where, $params ] = $this->build_where( $filters );
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery
-		$rows = $wpdb->get_results( "SELECT popup_id, COUNT(*) as cnt FROM {$t} WHERE event_type = 'impression' GROUP BY popup_id", ARRAY_A );
+		$sql = "SELECT popup_id, COUNT(*) as cnt FROM {$t} {$where} GROUP BY popup_id";
+		$rows = $params
+			? $wpdb->get_results( $wpdb->prepare( $sql, $params ), ARRAY_A )
+			: $wpdb->get_results( $sql, ARRAY_A );
 		$out  = [];
 		foreach ( (array) $rows as $row ) $out[ (int) $row['popup_id'] ] = (int) $row['cnt'];
 		return $out;
+	}
+
+	public function get_device_breakdown( array $filters = [] ): array {
+		global $wpdb;
+		$t = $this->table();
+		[ $where, $params ] = $this->build_where( $filters );
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery
+		$sql = "SELECT device_type, COUNT(*) as cnt FROM {$t} {$where} GROUP BY device_type";
+		$rows = $params
+			? $wpdb->get_results( $wpdb->prepare( $sql, $params ), ARRAY_A )
+			: $wpdb->get_results( $sql, ARRAY_A );
+		$out  = [ 'desktop' => 0, 'tablet' => 0, 'mobile' => 0 ];
+		foreach ( (array) $rows as $row ) {
+			$out[ (string) $row['device_type'] ] = (int) $row['cnt'];
+		}
+		return $out;
+	}
+
+	/**
+	 * Build a parameterized WHERE clause for analytics queries.
+	 *
+	 * Supported filters:
+	 *   - period: 'all' | '7d' | '30d' | '90d'
+	 *   - popup_id: int
+	 *   - device: '' | 'desktop' | 'tablet' | 'mobile'
+	 *   - event_in: array of event_type strings
+	 *
+	 * Returns [ 'WHERE ...' (or ''), array of $wpdb->prepare args ].
+	 */
+	private function build_where( array $filters ): array {
+		global $wpdb;
+		$clauses = [];
+		$params  = [];
+
+		if ( ! empty( $filters['period'] ) && 'all' !== $filters['period'] ) {
+			$days = (int) $filters['period'];
+			if ( in_array( $days, [ 7, 30, 90 ], true ) ) {
+				$since = gmdate( 'Y-m-d H:i:s', time() - ( $days * DAY_IN_SECONDS ) );
+				$clauses[] = 'created_at >= %s';
+				$params[]  = $since;
+			}
+		}
+
+		if ( ! empty( $filters['popup_id'] ) ) {
+			$clauses[] = 'popup_id = %d';
+			$params[]  = (int) $filters['popup_id'];
+		}
+
+		if ( ! empty( $filters['device'] ) ) {
+			$clauses[] = 'device_type = %s';
+			$params[]  = (string) $filters['device'];
+		}
+
+		if ( ! empty( $filters['event_in'] ) && is_array( $filters['event_in'] ) ) {
+			$placeholders = implode( ',', array_fill( 0, count( $filters['event_in'] ), '%s' ) );
+			$clauses[] = "event_type IN ({$placeholders})";
+			foreach ( (array) $filters['event_in'] as $ev ) {
+				$params[] = (string) $ev;
+			}
+		}
+
+		$where = $clauses ? 'WHERE ' . implode( ' AND ', $clauses ) : '';
+		return [ $where, $params ];
+	}
+
+	/**
+	 * Parse filters from $_GET/$_POST and return a normalized array safe for queries.
+	 *
+	 * @return array{period:string,popup_id:int,device:string}
+	 */
+	public function parse_filters( array $source ): array {
+		$period  = isset( $source['period'] ) ? sanitize_key( (string) $source['period'] ) : 'all';
+		if ( ! in_array( $period, [ 'all', '7d', '30d', '90d' ], true ) ) {
+			$period = 'all';
+		}
+		$popup_id = isset( $source['popup_id'] ) ? absint( $source['popup_id'] ) : 0;
+		$device   = isset( $source['device'] ) ? sanitize_key( (string) $source['device'] ) : '';
+		if ( ! in_array( $device, [ '', 'desktop', 'tablet', 'mobile' ], true ) ) {
+			$device = '';
+		}
+		return [
+			'period'   => $period,
+			'popup_id' => $popup_id,
+			'device'   => $device,
+		];
 	}
 
 	public function clear_popup_events( int $popup_id ): void {
@@ -83,7 +190,50 @@ final class MLPP_Analytics {
 		$device     = sanitize_key( $_POST['device_type'] ?? '' );
 		$valid = [ 'impression','open','close','primary_click','secondary_click','image_click','conversion' ];
 		if ( ! $popup_id || ! in_array( $event_type, $valid, true ) ) wp_send_json_error( 'invalid' );
+
+		// Rate limit: 1 evento do mesmo tipo por popup por IP por janela (default 5s).
+		// Impede que visitantes (ou bots) inflem a tabela de eventos em loop.
+		$window = (int) apply_filters( 'mlpp_event_rate_limit_window', 5 );
+		if ( $window > 0 && $this->is_rate_limited( $popup_id, $event_type, $window ) ) {
+			wp_send_json_error( 'rate_limited' );
+		}
+
 		$this->record( $popup_id, $event_type, $page_url, $device );
 		wp_send_json_success();
+	}
+
+	/**
+	 * Returns true when the same IP+popup+event has fired within the
+	 * rate-limit window. Allows real visitors through (one event per N
+	 * seconds) while blocking scripted floods.
+	 */
+	private function is_rate_limited( int $popup_id, string $event_type, int $window ): bool {
+		$ip = $this->client_ip();
+		if ( '' === $ip ) {
+			return false;
+		}
+		$key  = 'mlpp_rl_' . md5( $ip . '|' . $popup_id . '|' . $event_type );
+		$seen = get_site_transient( $key );
+		if ( $seen ) {
+			return true;
+		}
+		set_site_transient( $key, 1, $window );
+		return false;
+	}
+
+	/**
+	 * Best-effort client IP. Trusts REMOTE_ADDR by default; theme/addon
+	 * can override via the `mlpp_client_ip` filter (e.g. behind a CDN).
+	 */
+	private function client_ip(): string {
+		$ip = isset( $_SERVER['REMOTE_ADDR'] ) ? (string) $_SERVER['REMOTE_ADDR'] : '';
+		$ip = sanitize_text_field( $ip );
+		/**
+		 * Filters the client IP used for analytics rate limiting.
+		 *
+		 * @param string $ip Remote address from $_SERVER['REMOTE_ADDR'].
+		 */
+		$ip = (string) apply_filters( 'mlpp_client_ip', $ip );
+		return $ip;
 	}
 }

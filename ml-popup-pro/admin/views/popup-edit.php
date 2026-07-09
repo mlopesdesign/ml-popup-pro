@@ -7,11 +7,12 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  * @var array       $toast
  * @var array       $popup_stats
  */
-$id          = (int) ( $popup['id'] ?? 0 );
-$design      = is_array( $popup['design'] ?? null )      ? $popup['design']      : [];
-$triggers    = is_array( $popup['triggers'] ?? null )    ? $popup['triggers']    : [];
-$rules       = is_array( $popup['rules'] ?? null )       ? $popup['rules']       : [];
-$storage_cfg = is_array( $popup['storage_cfg'] ?? null ) ? $popup['storage_cfg'] : [];
+$id            = (int) ( $popup['id'] ?? 0 );
+$design        = is_array( $popup['design'] ?? null )        ? $popup['design']        : [];
+$triggers      = is_array( $popup['triggers'] ?? null )      ? $popup['triggers']      : [];
+$rules         = is_array( $popup['rules'] ?? null )         ? $popup['rules']         : [];
+$storage_cfg   = is_array( $popup['storage_cfg'] ?? null )   ? $popup['storage_cfg']   : [];
+$goal_selectors = is_array( $popup['goal_selectors'] ?? null ) ? $popup['goal_selectors'] : [];
 
 $type_labels = [ 'center_modal'=>'Modal Central','bottom_bar'=>'Barra Inferior','slide_in'=>'Slide-in','fullscreen_overlay'=>'Fullscreen','floating_box'=>'Caixa Flutuante' ];
 
@@ -378,6 +379,14 @@ $image_id  = (int) mlppe_v( $popup, 'image_attachment_id', 0 );
 					<label>X dias (para regras baseadas em dias)</label>
 					<input type="number" name="mlpp_popup[triggers][frequency_days]" value="<?php echo esc_attr( mlppe_v( $triggers, 'frequency_days', 7 ) ); ?>" min="1" style="max-width:120px">
 				</div>
+			</div>
+
+			<div class="mlpp-divider"></div>
+			<p class="mlpp-section-title">Conversão automática (Goal Tracking)</p>
+			<div class="mlpp-field">
+				<label>Marcar como conversão ao clicar em (CSS selectors, um por linha)</label>
+				<textarea name="mlpp_popup[goal_selectors]" rows="3" placeholder=".single_add_to_cart_button&#10;form.checkout .submit&#10;#comprar-agora"><?php echo esc_textarea( implode( "\n", (array) $goal_selectors ) ); ?></textarea>
+				<p class="description">Quando o visitante clicar em qualquer elemento do popup que case um desses seletores CSS, o evento <code>conversion</code> é registrado automaticamente (uma vez por popup). Útil para medir cliques em botões WooCommerce, formulários de captura, links de checkout etc.</p>
 			</div>
 		</section>
 

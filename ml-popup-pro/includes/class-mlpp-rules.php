@@ -19,7 +19,18 @@ final class MLPP_Rules {
 		$settings = get_option( 'mlpp_settings', [] );
 		$allow_multiple = ! empty( $settings['allow_multiple_popups'] ) && $settings['allow_multiple_popups'] === '1';
 
-		return $allow_multiple ? $eligible : ( $eligible ? [ $eligible[0] ] : [] );
+		$eligible = $allow_multiple ? $eligible : ( $eligible ? [ $eligible[0] ] : [] );
+
+		/**
+		 * Filters the final list of popups eligible to be displayed on the
+		 * current page request. Receives the already-filtered, sorted,
+		 * single-or-multi list. Return an array of popup rows in the same
+		 * shape as $popups (decoded: design/triggers/rules/storage_cfg as arrays).
+		 *
+		 * @param array $eligible   Popups cleared all rules.
+		 * @param array $popups     All active popups before rule filtering (raw).
+		 */
+		return (array) apply_filters( 'mlpp_eligible_popups', $eligible, $popups );
 	}
 
 	private function decode( array $popup ): array {
