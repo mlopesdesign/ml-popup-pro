@@ -116,6 +116,14 @@ final class MLPP_Rules {
 	private function popup_matches( array $popup ): bool {
 		$rules = is_array( $popup['rules'] ) ? $popup['rules'] : [];
 
+		// LGPD / consent gate. When consent_mode is 'wait' and the WP
+		// Consent API is active, do not show until the visitor grants the
+		// 'mlpp/marketing' consent type. Falls through to "show normally"
+		// when the API isn't available or consent_mode is off.
+		if ( ! $this->check_consent() ) {
+			return false;
+		}
+
 		// Scheduling.
 		if ( ! $this->check_schedule( $rules ) ) {
 			return false;
@@ -137,6 +145,25 @@ final class MLPP_Rules {
 		}
 
 		return true;
+	}
+
+	/**
+	 * Respects the per-site consent_mode setting:
+	 *   off       — always show.
+	 *   wait      — show only when WP Consent API reports a positive answer.
+	 *   functional — show regardless (non-tracking popup; e.g. newsletter form).
+	 */
+	private function check_consent(): bool {
+		$settings  = (array) get_option( 'mlpp_settings', [] );
+		$mode      = (string) ( $settings['consent_mode'] ?? 'off' );
+		if ( 'wait' !== $mode ) {
+			return true;
+		}
+		if ( ! function_exists( 'wp_has_consent' ) ) {
+			// WP < 6.0 — no consent API, treat as granted so site doesn't break.
+			return true;
+		}
+		return (bool) wp_has_consent( 'mlpp/marketing' );
 	}
 
 	private function check_schedule( array $rules ): bool {

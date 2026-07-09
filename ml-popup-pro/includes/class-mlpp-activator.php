@@ -7,7 +7,7 @@ final class MLPP_Activator {
 	 * Schema version. Bump whenever the table structure changes so that
 	 * maybe_upgrade() re-runs the migration on existing installs.
 	 */
-	const DB_VERSION = '5';
+	const DB_VERSION = '6';
 
 	/**
 	 * Columns expected on the popups table, with the DDL used to (re)create
@@ -92,7 +92,22 @@ final class MLPP_Activator {
 			UNIQUE KEY meta_key (meta_key)
 		) {$charset};";
 
-		return [ $sql_popups, $sql_events, $sql_meta ];
+		$sql_audit = "CREATE TABLE {$p}mlpp_audit (
+			id          BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+			popup_id    BIGINT UNSIGNED NOT NULL DEFAULT 0,
+			user_id     BIGINT UNSIGNED NOT NULL DEFAULT 0,
+			user_login  VARCHAR(60)     NOT NULL DEFAULT '',
+			action      VARCHAR(20)     NOT NULL DEFAULT '',
+			meta        TEXT            NULL,
+			created_at  DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			PRIMARY KEY  (id),
+			KEY popup_id (popup_id),
+			KEY user_id (user_id),
+			KEY action (action),
+			KEY created_at (created_at)
+		) {$charset};";
+
+		return [ $sql_popups, $sql_events, $sql_meta, $sql_audit ];
 	}
 
 	/**

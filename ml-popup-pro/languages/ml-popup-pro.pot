@@ -1,0 +1,119 @@
+# Copyright (C) 2026 ML Lopes Design
+# This file is distributed under the GPL2+ license.
+msgid ""
+msgstr ""
+"Project-Id-Version: ML Popup Pro 1.4.0\n"
+"Report-Msgid-Bugs-To: https://mlopesdesign.com.br/contato\n"
+"POT-Creation-Date: 2026-07-09 18:23+0000\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: pt_BR\n"
+"Plural-Forms: nplurals=2; plural=(n > 1);\n"
+"X-Domain: ml-popup-pro\n"
+"X-Generator: Mavis POT generator\n"
+
+# Common / global
+msgid "ML Popup Pro"
+msgstr ""
+
+msgid "Unauthorized."
+msgstr ""
+
+msgid "Security check failed."
+msgstr ""
+
+# Dashboard
+msgid "Total de Impressões"
+msgstr ""
+
+msgid "Total de Cliques"
+msgstr ""
+
+msgid "Popups Ativos"
+msgstr ""
+
+# Settings / Activation
+msgid "🔑 Ativação"
+msgstr ""
+
+msgid "Status:"
+msgstr ""
+
+msgid "Serial Pro"
+msgstr ""
+
+msgid "Ativar"
+msgstr ""
+
+msgid "Desativar licença"
+msgstr ""
+
+msgid "Servidor de licença"
+msgstr ""
+
+msgid "Recursos Pro"
+msgstr ""
+
+msgid "Free"
+msgstr ""
+
+msgid "Pro ativa"
+msgstr ""
+
+msgid "Pro expirada"
+msgstr ""
+
+# Analytics
+msgid "Período"
+msgstr ""
+
+msgid "Popup"
+msgstr ""
+
+msgid "Dispositivo"
+msgstr ""
+
+# Templates
+msgid "Newsletter Signup"
+msgstr ""
+
+msgid "Black Friday"
+msgstr ""
+
+msgid "Natal"
+msgstr ""
+
+msgid "Exit Survey"
+msgstr ""
+
+msgid "Frete Grátis"
+msgstr ""
+
+# Errors / notices
+msgid "Falha ao salvar:"
+msgstr ""
+
+msgid "Popup salvo com sucesso."
+msgstr ""
+
+msgid "Popup excluído."
+msgstr ""
+
+msgid "Configurações salvas."
+msgstr ""
+
+# LGPD
+msgid "Consent status"
+msgstr ""
+
+msgid "Awaiting user consent"
+msgstr ""
+
+#: includes/class-mlpp-frontend.php
+msgctxt "consent banner"
+msgid "Marketing and analytics cookies"
+msgstr ""

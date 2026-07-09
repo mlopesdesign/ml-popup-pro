@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit
+	bootstrap="tests/bootstrap.php"
+	colors="true"
+	convertDeprecationsToExceptions="false"
+	convertErrorsToExceptions="true"
+	convertNoticesToExceptions="true"
+	convertWarningsToExceptions="true"
+	beStrictAboutChangesDuringTests="true"
+	beStrictAboutOutputDuringTests="true"
+	stopOnFailure="false"
+	executionOrder="random"
+	resolveDependencies="true"
+	enforceTimeLimit="false"
+	cacheResult="false"
+>
+	<testsuites>
+		<testsuite name="ML Popup Pro">
+			<directory suffix="Test.php">tests/</directory>
+		</testsuite>
+	</testsuites>
+	<coverage>
+		<include>
+			<directory suffix=".php">includes/</directory>
+		</include>
+		<report>
+			<text outputFile="php://stdout"/>
+		</report>
+	</coverage>
+	<php>
+		<env name="WP_RUN_TYPE" value="tests"/>
+		<env name="MLPP_TESTS_PATH" value="includes/"/>
+	</php>
+</phpunit>

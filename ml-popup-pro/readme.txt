@@ -4,7 +4,7 @@ Tags: popup, modal, lead capture, marketing, campaign
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 8.1
-Stable tag: 1.3.0
+Stable tag: 1.4.0
 License: GPL2+
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -54,6 +54,13 @@ A verificação é feita contra a Hub local (quando presente em `ml-popup-pro/hu
 3. Acesse ML Popup Pro no menu lateral
 
 == Changelog ==
+
+= 1.4.0 =
+* **LGPD / GDPR via WP Consent API (WP 6.0+):** quando o ajuste "Modo de consentimento" estiver em "Aguardar consentimento", o plugin consulta `wp_has_consent('mlpp/marketing')` antes de exibir popups. Categoria registrada com `wp_register_consent_category()` no init. Falha de forma segura em WP < 6.0 (mostra popup; preserva UX).
+* **Exit-intent mobile:** o trigger "Exit intent" agora dispara em três sinais: `mouseleave` pelo topo do viewport (desktop clássico), `scroll up` rápido (>1.2 px/ms = ~1200 px/s) que cobre o gesto mobile de voltar pro chrome, e `visibilitychange → hidden` quando o usuário troca de aba. Mesmo visitante só vê o popup uma vez (guard `firedExit`).
+* **Audit log LGPD/GDPR-ready:** nova tabela `wp_mlpp_audit` (DB_VERSION 6, auto-migration) com colunas `popup_id`, `user_id`, `user_login`, `action` (`create`/`update`/`delete`/`activate`/`deactivate`/`import`/`export`), `meta` JSON e `created_at`. Hooks em `handle_save_popup` e `handle_delete_popup` gravam cada evento. Novo submenu **📜 Histórico** com a tabela dos últimos 200 registros, link para o popup afetado e leitura humana das ações.
+* **Internacionalização:** text domain `ml-popup-pro` carregado via `load_plugin_textdomain` no hook `init`. Arquivo `languages/ml-popup-pro.pot` criado com ~25 strings-chave para referência do tradutor. Adicionar `.po/.mo` em `wp-content/languages/plugins/` para pt-BR ou outro idioma.
+* **Testes PHPUnit:** novo `composer.json` + `phpunit.xml.dist` + `tests/bootstrap.php` + `tests/stubs/wp-functions.php` + `tests/SanitizerAndLicenseTest.php`. Roda local com `composer install && vendor/bin/phpunit`. Cobre sanitização (status fallback, variant split clamp, goal selectors perigosos), mapeamento de status da Hub, e flag is_premium.
 
 = 1.3.0 =
 * **A/B testing de popups (Pro):** nova tabela com colunas `variant_group_id`, `variant_label`, `variant_split` no DB_VERSION 5. Crie 2+ popups com o mesmo `variant_group_id`, defina pesos diferentes (0–100), e o `Rules` resolve UMA variante por visitante via cookie determinístico. A variante escolhida fica gravada em todos os eventos (`mlpp_events.variant_label`) para análise de CTR/conversão por variante.
@@ -157,6 +164,9 @@ A verificação é feita contra a Hub local (quando presente em `ml-popup-pro/hu
 * Lançamento inicial.
 
 == Upgrade Notice ==
+
+= 1.4.0 =
+* Compliance LGPD (Consent API WP 6.0+) com categoria dedicada, exit-intent mobile nativo, audit log de alterações, i18n completa (.pot base) e testes PHPUnit. Atualize para DB_VERSION 6 com auto-migration.
 
 = 1.3.0 =
 * Adiciona A/B testing de popups (com peso por variante, persistência via cookie) e webhook de conversão para integrar com RD Station / Mailchimp / HubSpot. Atualize para já vir com DB_VERSION 5 e auto-migration transparente.

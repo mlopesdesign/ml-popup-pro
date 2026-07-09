@@ -13,6 +13,22 @@ final class MLPP_Admin {
 		$this->templates = new MLPP_Templates();
 	}
 
+	/**
+	 * Register the plugin's consent category with the WP Consent API
+	 * (WordPress 6.0+ core, or the official "wp-consent-level-api" plugin
+	 * on older WP). When consent_mode is set to 'wait', MLPP only shows
+	 * popups after the visitor opts into this category.
+	 */
+	public function register_consent_category(): void {
+		if ( ! function_exists( 'wp_register_consent_category' ) ) {
+			return;
+		}
+		wp_register_consent_category( 'mlpp/marketing', [
+			'name'        => 'Marketing & Analytics',
+			'description' => 'Permite que popups sejam exibidos para medir campanhas e conversões.',
+		] );
+	}
+
 	public function init(): void {
 		add_action( 'admin_menu', [ $this, 'register_menus' ] );
 		add_action( 'admin_enqueue_scripts', [ $this, 'enqueue_assets' ] );
@@ -28,6 +44,9 @@ final class MLPP_Admin {
 		add_action( 'admin_post_mlpp_activate_license',   [ $this, 'handle_activate_license' ] );
 		add_action( 'admin_post_mlpp_deactivate_license', [ $this, 'handle_deactivate_license' ] );
 		add_action( 'admin_post_mlpp_save_brand',         [ $this, 'handle_save_brand' ] );
+
+		// WP Consent API integration (LGPD / GDPR).
+		add_action( 'init', [ $this, 'register_consent_category' ], 5 );
 	}
 
 	public function register_menus(): void {
@@ -42,7 +61,14 @@ final class MLPP_Admin {
 		add_submenu_page( 'ml-popup-pro', 'Templates',        'Templates',        'manage_options', 'mlpp-templates',    [ $this, 'page_templates' ] );
 		add_submenu_page( 'ml-popup-pro', 'Analytics',        'Analytics',        'manage_options', 'mlpp-analytics',    [ $this, 'page_analytics' ] );
 		add_submenu_page( 'ml-popup-pro', 'Configurações',    'Configurações',    'manage_options', 'mlpp-settings',     [ $this, 'page_settings' ] );
+		add_submenu_page( 'ml-popup-pro', 'Histórico',        '📜 Histórico',     'manage_options', 'mlpp-audit',        [ $this, 'page_audit' ] );
 		add_submenu_page( null,           'Editar Popup',     'Editar Popup',     'manage_options', 'mlpp-popup-edit',   [ $this, 'page_popup_edit' ] );
+	}
+
+	public function page_audit(): void {
+		MLPP_Security::check_admin();
+		$entries = self::get_recent_audit( 200 );
+		require MLPP_PLUGIN_DIR . 'admin/views/audit.php';
 	}
 
 
@@ -253,6 +279,13 @@ final class MLPP_Admin {
 			return;
 		}
 
+		self::record_audit( $id ? 'update' : 'create', $saved_id, [
+			'name'     => (string) ( $data['name'] ?? '' ),
+			'type'     => (string) ( $data['popup_type'] ?? '' ),
+			'status'   => (string) ( $data['status'] ?? '' ),
+			'wpnonce_ok' => true,
+		] );
+
 		$this->redirect_with_toast(
 			admin_url( 'admin.php?page=mlpp-popup-edit&popup_id=' . $saved_id ),
 			'Popup salvo com sucesso.', 'success'
@@ -263,7 +296,13 @@ final class MLPP_Admin {
 		MLPP_Security::check_admin();
 		MLPP_Security::verify_nonce( 'mlpp_delete_popup' );
 		$id = absint( $_POST['popup_id'] ?? 0 );
-		if ( $id ) $this->storage->delete_popup( $id );
+		if ( $id ) {
+			$row = $this->storage->get_popup( $id );
+			$this->storage->delete_popup( $id );
+			self::record_audit( 'delete', $id, [
+				'name' => (string) ( $row['name'] ?? '' ),
+			] );
+		}
 		$this->redirect_with_toast( admin_url( 'admin.php?page=mlpp-popups' ), 'Popup excluído.', 'success' );
 	}
 

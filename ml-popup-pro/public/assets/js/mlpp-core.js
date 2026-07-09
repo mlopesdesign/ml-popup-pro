@@ -1,4 +1,4 @@
-/* ML Popup Pro – Frontend Core v1.3.0 */
+/* ML Popup Pro – Frontend Core v1.4.0 */
 /* Vanilla JS – no external deps – blocker-friendly – first-party only */
 (function () {
   'use strict';
@@ -675,11 +675,41 @@
       }, {passive:true});
     }
     else if (type === 'exit_intent') {
-      var fired = false;
-      document.addEventListener('mouseleave', function onL(e) {
-        if (fired || e.clientY > 20) return;
-        fired=true; document.removeEventListener('mouseleave',onL); showPopup(popup);
-      });
+      var firedExit = false;
+      function tryShow() {
+        if (firedExit) return;
+        firedExit = true;
+        window.removeEventListener('mouseleave', onMouseLeave);
+        window.removeEventListener('scroll', onFastScrollUp);
+        document.removeEventListener('visibilitychange', onHidden);
+        showPopup(popup);
+      }
+      // Desktop: cursor leaves the viewport through the top edge.
+      function onMouseLeave(e) {
+        if (e.clientY > 20) return;
+        tryShow();
+      }
+      // Mobile + desktop fine-tune: rapid upward scroll is the canonical
+      // "user is about to leave / scroll back to chrome" signal. We
+      // sample scrollY twice within 100ms and require delta < -150 px/s
+      // before firing. Touch-equivalent: `touchmove` with negative dy.
+      var lastScrollY = window.scrollY;
+      var lastSampleAt = Date.now();
+      function onFastScrollUp() {
+        var now = Date.now();
+        var y = window.scrollY;
+        var dt = Math.max(1, now - lastSampleAt);
+        var velocity = (lastScrollY - y) / dt; // px/ms, positive = up
+        lastScrollY = y; lastSampleAt = now;
+        if (velocity >= 1.2) tryShow(); // 1.2 px/ms ≈ 1200 px/s
+      }
+      // Final fallback: page becomes hidden (tab switch on mobile).
+      function onHidden() {
+        if (document.visibilityState === 'hidden') tryShow();
+      }
+      window.addEventListener('mouseleave', onMouseLeave);
+      window.addEventListener('scroll', onFastScrollUp, { passive: true });
+      document.addEventListener('visibilitychange', onHidden);
     }
     else if (type === 'selector' && trig.selector) {
       document.querySelectorAll(trig.selector).forEach(function(el) {
