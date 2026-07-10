@@ -207,6 +207,13 @@ if ( ! function_exists( 'wp_verify_nonce' ) ) {
 if ( ! function_exists( 'wp_create_nonce' ) ) {
 	function wp_create_nonce( $action ) { return 'test-nonce'; }
 }
+if ( ! function_exists( 'check_ajax_referer' ) ) {
+	function check_ajax_referer( $action = -1, $query_arg = false, $die = true ) {
+		// Always succeed in tests. Real WP would compare the nonce field
+		// against the stored value and wp_die() on mismatch.
+		return true;
+	}
+}
 
 if ( ! function_exists( 'wp_kses_post' ) ) {
 	function wp_kses_post( $data ) { return (string) $data; }
