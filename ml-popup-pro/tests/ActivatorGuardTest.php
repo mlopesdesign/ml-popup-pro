@@ -90,11 +90,14 @@ final class ActivatorGuardTest extends TestCase {
 	}
 
 	public function test_ensure_schema_records_alter_failures_without_aborting(): void {
-		$GLOBALS['wpdb']->last_error = 'permission denied';
+		// Simulate a wpdb where every ALTER TABLE throws. The activator
+		// should catch per-column and continue.
+		$GLOBALS['wpdb']->throws_in_query = new \RuntimeException( 'permission denied' );
 		$notes = MLPP_Activator::ensure_schema();
 		$this->assertIsArray( $notes );
 		$combined = implode( ' | ', $notes );
-		$this->assertMatchesRegularExpression( '/Falha ao recriar coluna .*: permission denied/', $combined );
+		// Some entries must include the per-column exception note.
+		$this->assertMatchesRegularExpression( '/Exceção ao recriar coluna .*: permission denied/', $combined );
 	}
 
 	public function test_activate_does_not_throw_when_schema_fails(): void {
