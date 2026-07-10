@@ -52,8 +52,15 @@ if ( ! defined( 'MLPP_PLUGIN_BASENAME' ) ) {
 // Bootstrap the stubs.
 require_once __DIR__ . '/stubs/wp-functions.php';
 
+// ABSPATH is rooted at tests/, so wp-admin/includes/upgrade.php lives at
+// tests/wp-admin/includes/upgrade.php. Load that stub before any test
+// hits MLPP_Activator (it requires the file at runtime).
+require_once __DIR__ . '/wp-admin/includes/upgrade.php';
+
 // Load each plugin class so test files can exercise them in isolation.
 require_once MLPP_PLUGIN_DIR . 'includes/class-mlpp-security.php';
 require_once MLPP_PLUGIN_DIR . 'includes/class-mlpp-rules.php';
 require_once MLPP_PLUGIN_DIR . 'includes/class-mlpp-storage.php';
 require_once MLPP_PLUGIN_DIR . 'includes/class-mlpp-license.php';
+require_once MLPP_PLUGIN_DIR . 'includes/class-mlpp-activator.php';
+require_once MLPP_PLUGIN_DIR . 'includes/class-mlpp-analytics.php';

@@ -109,6 +109,24 @@ if ( ! function_exists( 'delete_option' ) ) {
 	}
 }
 
+if ( ! function_exists( 'set_transient' ) ) {
+	function set_transient( $key, $value, $expiration = 0 ) {
+		$GLOBALS['__mlpp_transients'][ $key ] = $value;
+		return true;
+	}
+}
+if ( ! function_exists( 'get_transient' ) ) {
+	function get_transient( $key ) {
+		return $GLOBALS['__mlpp_transients'][ $key ] ?? false;
+	}
+}
+if ( ! function_exists( 'delete_transient' ) ) {
+	function delete_transient( $key ) {
+		unset( $GLOBALS['__mlpp_transients'][ $key ] );
+		return true;
+	}
+}
+
 if ( ! function_exists( 'delete_site_transient' ) ) {
 	function delete_site_transient( $key ) { return true; }
 }
@@ -236,4 +254,10 @@ if ( ! function_exists( 'has_tag' ) ) {
 }
 if ( ! function_exists( 'wp_is_mobile' ) ) {
 	function wp_is_mobile() { return false; }
+}
+
+if ( ! function_exists( 'current_time' ) ) {
+	function current_time( $type = 'mysql' ) {
+		return gmdate( 'Y-m-d H:i:s' );
+	}
 }

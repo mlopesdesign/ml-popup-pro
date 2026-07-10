@@ -113,31 +113,84 @@ final class MLPP_Activator {
 	/**
 	 * Create or repair all tables. Safe to call repeatedly.
 	 * Returns an array of human-readable notes about what was done.
+	 *
+	 * Defensive: each step (dbDelta loop, SHOW COLUMNS probe, ALTER TABLE
+	 * repair, option writes) is guarded with its own try/catch. A failure
+	 * in one step never aborts the rest, so a degraded host can still
+	 * land in an at-least-readable schema.
 	 */
 	public static function ensure_schema(): array {
 		global $wpdb;
 		$notes = [];
-		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
 
-		foreach ( self::schema() as $sql ) {
-			dbDelta( $sql );
+		// Step 1 — wp-admin/includes/upgrade.php may be missing on sites
+		// where the wp-admin directory was relocated. Promote to throw
+		// instead of `require_once` fatal so we can record the note.
+		try {
+			$upgrade_file = ABSPATH . 'wp-admin/includes/upgrade.php';
+			if ( file_exists( $upgrade_file ) ) {
+				require_once $upgrade_file;
+			} else {
+				throw new \RuntimeException( 'wp-admin/includes/upgrade.php não encontrado em ' . $upgrade_file );
+			}
+		} catch ( \Throwable $e ) {
+			$notes[] = 'upgrade.php indisponível: ' . $e->getMessage();
+			error_log( '[ml-popup-pro] upgrade.php include failed: ' . $e->getMessage() );
+			return $notes;
 		}
 
-		// Safety net: guarantee every expected popups column exists, even on
-		// servers where dbDelta skipped a TEXT column on an earlier version.
-		$table    = $wpdb->prefix . 'mlpp_popups';
-		$existing = $wpdb->get_col( "SHOW COLUMNS FROM {$table}", 0 );
-		$existing = is_array( $existing ) ? array_map( 'strval', $existing ) : [];
+		if ( ! isset( $wpdb ) || ! is_object( $wpdb ) ) {
+			$notes[] = 'wpdb indisponível — schema não verificado.';
+			return $notes;
+		}
 
-		foreach ( self::popup_columns() as $name => $ddl ) {
-			if ( ! in_array( $name, $existing, true ) ) {
-				// phpcs:ignore WordPress.DB.PreparedSQL
-				$wpdb->query( "ALTER TABLE {$table} ADD COLUMN `{$name}` {$ddl}" );
-				$notes[] = sprintf( 'Coluna ausente recriada: %s', $name );
+		// Step 2 — dbDelta for each declared table.
+		foreach ( self::schema() as $sql ) {
+			try {
+				dbDelta( $sql );
+			} catch ( \Throwable $e ) {
+				$notes[] = 'dbDelta falhou em uma das tabelas: ' . $e->getMessage();
+				error_log( '[ml-popup-pro] dbDelta failed: ' . $e->getMessage() );
 			}
 		}
 
-		update_option( 'mlpp_db_version', self::DB_VERSION, false );
+		// Step 3 — safety-net column repair.
+		$table    = $wpdb->prefix . 'mlpp_popups';
+		$existing = [];
+		try {
+			$cols = $wpdb->get_col( "SHOW COLUMNS FROM {$table}", 0 );
+			$existing = is_array( $cols ) ? array_map( 'strval', $cols ) : [];
+		} catch ( \Throwable $e ) {
+			$notes[] = 'SHOW COLUMNS bloqueado: ' . $e->getMessage();
+			error_log( '[ml-popup-pro] SHOW COLUMNS failed: ' . $e->getMessage() );
+		}
+
+		foreach ( self::popup_columns() as $name => $ddl ) {
+			if ( in_array( $name, $existing, true ) ) {
+				continue;
+			}
+			try {
+				// phpcs:ignore WordPress.DB.PreparedSQL
+				$ok = $wpdb->query( "ALTER TABLE {$table} ADD COLUMN `{$name}` {$ddl}" );
+				if ( false === $ok && ! empty( $wpdb->last_error ) ) {
+					$notes[] = sprintf( 'Falha ao recriar coluna %s: %s', $name, $wpdb->last_error );
+					error_log( '[ml-popup-pro] ALTER TABLE failed for ' . $name . ': ' . $wpdb->last_error );
+				} else {
+					$notes[] = sprintf( 'Coluna ausente recriada: %s', $name );
+				}
+			} catch ( \Throwable $e ) {
+				$notes[] = sprintf( 'Exceção ao recriar coluna %s: %s', $name, $e->getMessage() );
+				error_log( '[ml-popup-pro] ALTER TABLE threw for ' . $name . ': ' . $e->getMessage() );
+			}
+		}
+
+		// Step 4 — stamp db_version so subsequent loads skip ensure_schema.
+		try {
+			update_option( 'mlpp_db_version', self::DB_VERSION, false );
+		} catch ( \Throwable $e ) {
+			$notes[] = 'update_option(db_version) falhou: ' . $e->getMessage();
+			error_log( '[ml-popup-pro] update_option(db_version) failed: ' . $e->getMessage() );
+		}
 
 		if ( empty( $notes ) ) {
 			$notes[] = 'Estrutura do banco verificada — nenhuma correção necessária.';
@@ -146,9 +199,21 @@ final class MLPP_Activator {
 	}
 
 	public static function activate(): void {
-		self::ensure_schema();
-		if ( ! get_option( 'mlpp_settings' ) ) {
-			update_option( 'mlpp_settings', self::default_settings(), false );
+		$notes = self::ensure_schema();
+		// Surface diagnostic notes for the admin_notices handler.
+		if ( is_array( $notes ) ) {
+			try {
+				set_transient( 'mlpp_activation_notes', $notes, DAY_IN_SECONDS );
+			} catch ( \Throwable $e ) {
+				error_log( '[ml-popup-pro] set_transient(activation_notes) failed: ' . $e->getMessage() );
+			}
+		}
+		if ( false === get_option( 'mlpp_settings' ) ) {
+			try {
+				update_option( 'mlpp_settings', self::default_settings(), false );
+			} catch ( \Throwable $e ) {
+				error_log( '[ml-popup-pro] default_settings insert failed: ' . $e->getMessage() );
+			}
 		}
 	}
 

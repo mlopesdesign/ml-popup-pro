@@ -71,6 +71,33 @@ final class MLPP_Admin {
 		require MLPP_PLUGIN_DIR . 'admin/views/audit.php';
 	}
 
+	/**
+	 * Read the most recent audit log rows. Returns an empty array when
+	 * the table is unavailable — never throws. Safe to call from
+	 * page_audit() during/after a partial migration.
+	 *
+	 * @return array<int, array<string, mixed>>
+	 */
+	public static function get_recent_audit( int $limit = 100 ): array {
+		try {
+			global $wpdb;
+			if ( ! isset( $wpdb ) || ! is_object( $wpdb ) ) {
+				return [];
+			}
+			$t     = $wpdb->prefix . 'mlpp_audit';
+			$limit = max( 1, min( 500, $limit ) );
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery
+			$rows  = $wpdb->get_results(
+				$wpdb->prepare( "SELECT * FROM {$t} ORDER BY created_at DESC, id DESC LIMIT %d", $limit ),
+				ARRAY_A
+			);
+			return is_array( $rows ) ? $rows : [];
+		} catch ( \Throwable $e ) {
+			error_log( '[ml-popup-pro] get_recent_audit failed: ' . $e->getMessage() );
+			return [];
+		}
+	}
+
 
 	public function render_admin_nav(): void {
 		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( (string) $_GET['page'] ) ) : 'ml-popup-pro';

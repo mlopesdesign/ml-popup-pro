@@ -4,7 +4,7 @@ Tags: popup, modal, lead capture, marketing, campaign
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 8.1
-Stable tag: 1.4.1
+Stable tag: 1.5.3
 License: GPL2+
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -54,6 +54,23 @@ A verificação é feita contra a Hub local (quando presente em `ml-popup-pro/hu
 3. Acesse ML Popup Pro no menu lateral
 
 == Changelog ==
+
+= 1.5.3 =
+* **Restauração de emergência após bug crítico na v1.5.0/v1.5.1/v1.5.2.** Versão baseada na **v1.4.1 estável** (última versão que funcionou em produção) com **apenas blindagens mínimas** — **ZERO features novas**. Cada alteração foi auditada linha por linha antes de subir.
+* **Bug crítico 1 corrigido — `MLPP_PLUGIN_BASENAME` undefined:** o hook `init` chamava `dirname( MLPP_PLUGIN_BASENAME )` em `load_plugin_textdomain`, mas a constante nunca havia sido definida. Em PHP 8.x com `WP_DEBUG=1` e `E_NOTICE`/`ErrorException`, isso virava fatal e quebrava o boot do plugin. Adicionada `define( 'MLPP_PLUGIN_BASENAME', plugin_basename( __FILE__ ) )` antes do `require_once` das classes.
+* **Bug crítico 2 corrigido — `get_recent_audit()` undefined:** `MLPP_Admin::page_audit()` chamava `self::get_recent_audit(200)` que não existia em nenhum lugar do código. Fatal quando o usuário clicava em "📜 Histórico" no menu. Implementado como método estático com try/catch que lê `wp_mlpp_audit` ordenado por `created_at DESC` e retorna `[]` em qualquer falha.
+* **Blindagens no boot (zero-features, todas em try/catch):**
+  * `register_activation_hook` agora é closure com try/catch. Falha em `MLPP_Activator::activate()` é logada e gravada em transient `mlpp_activation_error` (admin notice renderiza depois).
+  * `register_deactivation_hook` análogo.
+  * `add_action('plugins_loaded', …)` envolve `MLPP_Activator::maybe_upgrade()` e `new MLPP_Plugin()` cada um em try/catch próprio.
+  * `add_action('admin_notices', …)` renderiza `mlpp_activation_error` no topo do painel pra explicar o que aconteceu.
+  * Boot do `MLPP_Updater` envolto em try/catch (cobre falha de rede/SSL no `init()` e o `wp_remote_*`).
+  * `MLPP_Plugin::__construct()` quebra em `new MLPP_Admin()` e `new MLPP_Frontend()` (e cada `init()`) em try/catch isolado.
+  * `MLPP_Activator::ensure_schema()` quebra cada passo em try/catch: `require_once upgrade.php`, `dbDelta` por tabela, `SHOW COLUMNS`, cada `ALTER TABLE`, `update_option(db_version)`. Qualquer falha é logada e devolvida como entry no array `$notes` em vez de propagar throw.
+  * `MLPP_Admin::get_recent_audit()` (NOVO) envolve a leitura da tabela em try/catch e devolve `[]` em qualquer falha.
+* **Testes PHPUnit ampliados:** a base adiciona ActivatorGuardTest (mesmo caminho da v1.5.2, mantido porque a blindagem crítica foi mantida) + testes novos cobrindo `MLPP_Plugin::__construct()` boot isolado. Suite total = 36+ testes.
+* **Identidade preservada:** slug, classes, options, tabelas, shortcodes, AJAX, REST, frontend, admin — idênticos à v1.4.1. **Atualiza por cima de qualquer versão anterior** sem criar segunda instalação.
+* **Limitação conhecida, declaração honesta:** esta versão foi validada com `php -l` em 100% do source + PHPUnit contra stubs isolados. **Não** temos prova E2E com WordPress real rodando localmente (Docker + WP + MySQL ainda não foi montado); o user precisa subir e validar. Se quebrar, esta build pelo menos não 500a o site inteiro — degrada pra Free com aviso admin.
 
 = 1.4.1 =
 * **CI com PHPUnit:** novo job `test` em `release.yml` que roda `composer install && vendor/bin/phpunit`. O job `lint` (PHP `php -l` + Node `node --check` + sync-version) e o job de build só rodam depois de lint+test passarem. PRs contra `main` recebem o gate automaticamente antes do build.
@@ -170,6 +187,9 @@ A verificação é feita contra a Hub local (quando presente em `ml-popup-pro/hu
 * Lançamento inicial.
 
 == Upgrade Notice ==
+
+= 1.5.3 =
+* **RECOMENDADO** se você está numa das versões quebradas (v1.5.0, v1.5.1 ou v1.5.2) ou se o seu WP_DEBUG está ligado. Esta versão é baseada na v1.4.1 estável + blindagens mínimas sem nenhuma feature nova. Atualize primeiro por esta; só então planeje adicionar analytics A/B novamente em versão futura com cobertura de testes E2E.
 
 = 1.4.1 =
 * CI agora roda testes PHPUnit no PR e no build (gate antes do release). README/CHANGELOG/.harness docs adicionados. Atualização opcional, sem breaking changes. Atualize quando quiser CI gates completos.
