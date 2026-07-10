@@ -8,13 +8,19 @@ final class MLPP_Rules {
 	public function get_eligible_popups( array $active_popups ): array {
 		$eligible = [];
 		foreach ( $active_popups as $raw_popup ) {
-			$popup = is_array( $raw_popup['rules'] ) ? $raw_popup : $this->decode( $raw_popup );
+			// `?? null` makes the array access safe even when the column is
+			// missing on legacy tables (v1.0.x frozen installs). Without it,
+			// hosts that promote PHP Warnings to ErrorExceptions throw a
+			// fatal and break the whole frontend request — every page with
+			// an active popup was affected (rendering, JS enqueue, AJAX).
+			$popup = is_array( $raw_popup['rules'] ?? null ) ? $raw_popup : $this->decode( $raw_popup );
 			if ( $this->popup_matches( $popup ) ) {
 				$eligible[] = $popup;
 			}
 		}
 
-		usort( $eligible, fn( $a, $b ) => (int) $b['priority'] - (int) $a['priority'] );
+		// `?? 10` keeps the comparator safe against legacy/partial rows.
+		usort( $eligible, fn( $a, $b ) => (int) ( $b['priority'] ?? 10 ) - (int) ( $a['priority'] ?? 10 ) );
 
 		// A/B testing: collapse each `variant_group_id` to one variant per visitor.
 		$eligible = $this->select_variants( $eligible );
@@ -28,12 +34,12 @@ final class MLPP_Rules {
 		 * Filters the final list of popups eligible to be displayed on the
 		 * current page request. Receives the already-filtered, sorted,
 		 * single-or-multi list. Return an array of popup rows in the same
-		 * shape as $popups (decoded: design/triggers/rules/storage_cfg as arrays).
+		 * shape as $active_popups (decoded: design/triggers/rules/storage_cfg as arrays).
 		 *
-		 * @param array $eligible   Popups cleared all rules.
-		 * @param array $popups     All active popups before rule filtering (raw).
+		 * @param array $eligible       Popups cleared all rules.
+		 * @param array $active_popups  All active popups before rule filtering (raw).
 		 */
-		return (array) apply_filters( 'mlpp_eligible_popups', $eligible, $popups );
+		return (array) apply_filters( 'mlpp_eligible_popups', $eligible, $active_popups );
 	}
 
 	private function decode( array $popup ): array {
@@ -114,7 +120,7 @@ final class MLPP_Rules {
 	}
 
 	private function popup_matches( array $popup ): bool {
-		$rules = is_array( $popup['rules'] ) ? $popup['rules'] : [];
+		$rules = is_array( $popup['rules'] ?? null ) ? $popup['rules'] : [];
 
 		// LGPD / consent gate. When consent_mode is 'wait' and the WP
 		// Consent API is active, do not show until the visitor grants the

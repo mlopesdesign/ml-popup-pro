@@ -4,7 +4,7 @@ Tags: popup, modal, lead capture, marketing, campaign
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 8.1
-Stable tag: 1.5.3
+Stable tag: 1.5.4
 License: GPL2+
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -54,6 +54,12 @@ A verificação é feita contra a Hub local (quando presente em `ml-popup-pro/hu
 3. Acesse ML Popup Pro no menu lateral
 
 == Changelog ==
+
+= 1.5.4 =
+* **Bug crítico 1 — frontend quebrava em sites com schema legado:** `MLPP_Rules::get_eligible_popups()` acessava `$raw_popup['rules']` direto em toda página com popup ativo. Em sites com schema `wp_mlpp_popups` da v1.0.x (sem coluna `rules`) ou com `rules` retornando `null`, o acesso gerava "Undefined array key" Warning. Em hosts com `set_error_handler` que promove Warning → Exception (várias hospedagens de revenda Magento + WP compartilhado têm isso), o request inteiro quebrava — fatal que afetava admin + frontend + AJAX. Corrigido para `$raw_popup['rules'] ?? null`. Mesmo tratamento aplicado a `$a['priority'] ?? 10` no `usort` e `$popup['rules'] ?? null` em `popup_matches()`. Cobrido por `RulesGuardTest::test_get_eligible_popups_with_no_rules_key_does_not_throw_warning`.
+* **Bug crítico 2 — AJAX público corrompido por warnings:** `MLPP_Analytics::handle_ajax_event()` agora bufferiza `ob_start()` antes de qualquer operação e descarta o buffer com `ob_clean()` antes de `wp_send_json_*`. Em hosts com `WP_DEBUG=1` ou filters de terceiros que vazam warnings, a resposta JSON vinha poluída (HTML na frente), fazia o frontend ignorar eventos silenciosamente. Agora vai JSON puro, sempre. `flush_and_die()` helper centraliza o pattern.
+* **Bug crítico 3 — updater aceitava ZIP de código-fonte:** `MLPP_Updater::candidate_zip_urls()` tinha `zipball_url` (`https://github.com/<repo>/archive/refs/tags/<tag>.zip`) como fallback do `zip_url` (asset oficial). Memória do projeto é explícita: **REJEITAR zipballs/source archives**. Em produção, se o CDN do GitHub Releases retornasse 504 no asset oficial, o plugin baixaria o zip de source com estrutura `<repo>-<version>/` (não `<plugin-slug>/`) e instalaria artefatos de debug em produção. Removido o fallback zipball. Se asset oficial não responde, `pick_working_zip_url` retorna `''` e o updater mostra "Nenhuma URL de download acessível" com retry explícito.
+* Identidade preservada; compatibilidade com v1.4.1 e v1.5.3 mantida; zero features novas.
 
 = 1.5.3 =
 * **Restauração de emergência após bug crítico na v1.5.0/v1.5.1/v1.5.2.** Versão baseada na **v1.4.1 estável** (última versão que funcionou em produção) com **apenas blindagens mínimas** — **ZERO features novas**. Cada alteração foi auditada linha por linha antes de subir.
@@ -187,6 +193,9 @@ A verificação é feita contra a Hub local (quando presente em `ml-popup-pro/hu
 * Lançamento inicial.
 
 == Upgrade Notice ==
+
+= 1.5.4 =
+* **RECOMENDADO para qualquer site que ativa ML Popup Pro com schema legado ou `WP_DEBUG=1` ligado.** Tapa 3 caminhos onde o plugin poderia matar o request inteiro em hospedagem real (warning → exception fatal). Sem features novas.
 
 = 1.5.3 =
 * **RECOMENDADO** se você está numa das versões quebradas (v1.5.0, v1.5.1 ou v1.5.2) ou se o seu WP_DEBUG está ligado. Esta versão é baseada na v1.4.1 estável + blindagens mínimas sem nenhuma feature nova. Atualize primeiro por esta; só então planeje adicionar analytics A/B novamente em versão futura com cobertura de testes E2E.

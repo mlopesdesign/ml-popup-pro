@@ -184,23 +184,55 @@ final class MLPP_Analytics {
 	}
 
 	public function handle_ajax_event(): void {
-		check_ajax_referer( 'mlpp_frontend_nonce', 'nonce' );
-		$popup_id   = absint( $_POST['popup_id'] ?? 0 );
-		$event_type = sanitize_key( $_POST['event_type'] ?? '' );
-		$page_url   = esc_url_raw( wp_unslash( $_POST['page_url'] ?? '' ) );
-		$device     = sanitize_key( $_POST['device_type'] ?? '' );
-		$valid = [ 'impression','open','close','primary_click','secondary_click','image_click','conversion' ];
-		if ( ! $popup_id || ! in_array( $event_type, $valid, true ) ) wp_send_json_error( 'invalid' );
+		// Buffer every byte that may leak before wp_send_json_* — any
+		// stray PHP Warning/Notice from a host with `WP_DEBUG=1` or a
+		// strict error handler would otherwise prepend non-JSON output
+		// and corrupt the response (frontend then sees HTML/text where
+		// it expected JSON, silently dropping events).
+		$buf = ob_start();
+		try {
+			check_ajax_referer( 'mlpp_frontend_nonce', 'nonce' );
+			$popup_id   = absint( $_POST['popup_id'] ?? 0 );
+			$event_type = sanitize_key( $_POST['event_type'] ?? '' );
+			$page_url   = esc_url_raw( wp_unslash( $_POST['page_url'] ?? '' ) );
+			$device     = sanitize_key( $_POST['device_type'] ?? '' );
+			$valid      = [ 'impression','open','close','primary_click','secondary_click','image_click','conversion' ];
 
-		// Rate limit: 1 evento do mesmo tipo por popup por IP por janela (default 5s).
-		// Impede que visitantes (ou bots) inflem a tabela de eventos em loop.
-		$window = (int) apply_filters( 'mlpp_event_rate_limit_window', 5 );
-		if ( $window > 0 && $this->is_rate_limited( $popup_id, $event_type, $window ) ) {
-			wp_send_json_error( 'rate_limited' );
+			if ( ! $popup_id || ! in_array( $event_type, $valid, true ) ) {
+				$this->flush_and_die( false, 'invalid' );
+			}
+
+			// Rate limit: 1 evento do mesmo tipo por popup por IP por janela
+			// (default 5s). Impede que visitantes (ou bots) inflem a tabela
+			// de eventos em loop.
+			$window = (int) apply_filters( 'mlpp_event_rate_limit_window', 5 );
+			if ( $window > 0 && $this->is_rate_limited( $popup_id, $event_type, $window ) ) {
+				$this->flush_and_die( false, 'rate_limited' );
+			}
+
+			$this->record( $popup_id, $event_type, $page_url, $device, (string) ( $_POST['variant_label'] ?? '' ) );
+			$this->flush_and_die( true );
+		} catch ( \Throwable $e ) {
+			// Never let a foreground exception break the AJAX contract.
+			error_log( '[ml-popup-pro] handle_ajax_event failed: ' . $e->getMessage() );
+			$this->flush_and_die( false, 'server_error' );
 		}
+	}
 
-		$this->record( $popup_id, $event_type, $page_url, $device, (string) ( $_POST['variant_label'] ?? '' ) );
-		wp_send_json_success();
+	/**
+	 * Drop any buffered output before delegating to WP's
+	 * wp_send_json_*() so the response is always a single, clean JSON
+	 * document. Keeps the handler safe against hosts where
+	 * `WP_DEBUG=1` + strict error handler emit extra bytes.
+	 */
+	private function flush_and_die( bool $ok, string $message = '' ): void {
+		if ( ob_get_level() > 0 ) {
+			ob_clean();
+		}
+		if ( $ok ) {
+			wp_send_json_success();
+		}
+		wp_send_json_error( $message );
 	}
 
 	/**

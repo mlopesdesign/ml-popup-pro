@@ -1,4 +1,4 @@
-/* ML Popup Pro – Admin JS v1.5.3 */
+/* ML Popup Pro – Admin JS v1.5.4 */
 (function ($) {
   'use strict';
 

@@ -104,15 +104,14 @@ final class MLPP_Updater {
 			);
 		}
 
-		// Last-resort fallback when GitHub Releases CDN is unreachable (504/timeouts).
-		// The archive zipball has structure `<repo>-<version>/...` and the WP
-		// Upgrader extracts the plugin folder via header detection.
-		$zipball_url = sprintf(
-			'https://github.com/%s/%s/archive/refs/tags/v%s.zip',
-			self::GITHUB_OWNER,
-			self::GITHUB_REPO,
-			$version
-		);
+		// NOTE: Per project security policy, we explicitly do NOT fall back
+		// to GitHub's auto-generated `archive/refs/tags/<tag>.zip` (the
+		// "zipball"). That archive contains the repository's source tree
+		// with the folder named `<repo>-<version>/`, which won't match the
+		// plugin's intended `<plugin-slug>/` layout and would land unsafe
+		// debug artifacts in production installs. If the official release
+		// asset is unreachable, we surface an error and let the operator
+		// retry — never silently install a source archive.
 
 		$release = [
 			'version'      => $version,
@@ -120,7 +119,6 @@ final class MLPP_Updater {
 			'name'         => (string) ( $body['name'] ?? $body['tag_name'] ),
 			'changelog'    => (string) ( $body['body'] ?? '' ),
 			'zip_url'      => esc_url_raw( $zip_url ),
-			'zipball_url'  => esc_url_raw( $zipball_url ),
 			'release_url'  => esc_url_raw( (string) ( $body['html_url'] ?? '' ) ),
 			'published_at' => (string) ( $body['published_at'] ?? '' ),
 			'zip_fallbacks'=> [], // filled by apply_zip_fallbacks() if theme/addon adds mirrors
@@ -268,11 +266,10 @@ final class MLPP_Updater {
 	private function candidate_zip_urls( array $release ): array {
 		$urls = [];
 
+		// Only the official release asset ever reaches WP Upgrader. We
+		// never accept source archives / zipballs / path-tagged tags.
 		if ( ! empty( $release['zip_url'] ) ) {
 			$urls[] = (string) $release['zip_url'];
-		}
-		if ( ! empty( $release['zipball_url'] ) ) {
-			$urls[] = (string) $release['zipball_url'];
 		}
 
 		$mirrors = (array) apply_filters( 'mlpp_zip_url_mirrors', [], $release );
