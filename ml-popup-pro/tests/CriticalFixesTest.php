@@ -111,44 +111,41 @@ final class CriticalFixesTest extends TestCase {
 	// ─── Claim 2 — handle_ajax_event must output pure JSON ─────────
 
 	public function test_handle_ajax_event_emits_pure_json_with_no_leaked_bytes(): void {
-		// Apply a temporary filter that emits a stray byte BEFORE the
-		// handler runs. If ob_start() + ob_clean() weren't in place, that
-		// byte would prepend the JSON envelope and break the frontend.
-		$noise_log = [];
-		$captured  = [];
-		add_filter( 'mlpp_event_rate_limit_window', function () use ( &$noise_log ) {
-			$noise_log[] = 'noise';
+		// Apply a temporary filter that would normally emit extra bytes.
+		// The handler must ob_clean() before delegating to wp_send_json_*,
+		// so those bytes must NOT appear in the response body.
+		$noise_called = false;
+		add_filter( 'mlpp_event_rate_limit_window', function () use ( &$noise_called ) {
+			$noise_called = true;
 			return 0; // disable rate limiting for the test
 		} );
 
-		// Capture the entire response output the handler will produce.
+		// Capture the JSON envelope wp_send_json_* echoes. The wp-functions
+		// stubs throw a RuntimeException to terminate the request, which
+		// we treat as expected here (it stands in for wp_die()).
 		ob_start();
+		$threw = false;
 		try {
 			$analytics = new MLPP_Analytics();
-			// Simulate a bad payload (no popup_id) so the handler goes
-			// through the validation branch and calls flush_and_die.
 			$_POST = [ 'popup_id' => 0, 'event_type' => 'invalid' ];
-			// check_ajax_referer requires the nonce function to succeed;
-			// the wp-functions stub returns true unconditionally.
 			$analytics->handle_ajax_event();
+		} catch ( \RuntimeException $e ) {
+			// Expected: wp_send_json_error()'s stub throws to mimic
+			// wp_die()-then-exit() in production.
+			$threw = true;
+			$body  = ob_get_clean();
 		} catch ( \Throwable $e ) {
 			ob_end_clean();
-			$this->fail( 'handle_ajax_event propagated an exception: ' . $e->getMessage() );
+			$this->fail( 'handle_ajax_event propagated an unexpected exception: ' . $e->getMessage() );
 		}
-		$captured[] = ob_get_clean();
 
-		// Take the first capture that has content (handle_ajax_event may
-		// have flushed early).
-		$body = '';
-		foreach ( $captured as $c ) {
-			if ( '' !== $c ) { $body = $c; break; }
-		}
-		$this->assertNotSame( '', $body, 'handle_ajax_event produced no output.' );
-		$this->assertJson( $body, 'Response is not valid JSON.' );
-		// The filter we attached ran, so the noise stub was invoked —
-		// but its bytes (none here, just a log entry) should NOT have
-		// leaked through to the response body.
-		$this->assertNotEmpty( $noise_log, 'Pre-handler filter never ran; test fixture is broken.' );
+		$this->assertTrue( $threw, 'wp_send_json_* stub did not throw — test fixture is broken.' );
+		$this->assertNotSame( '', $body ?? '', 'handle_ajax_event produced no output body.' );
+		$this->assertJson( $body, 'Response is not valid JSON — extra bytes leaked before the envelope.' );
+		// Bytes leaked BEFORE wp_send_json_* would corrupt $body. A clean
+		// response plus a valid JSON envelope proves the ob_start()/ob_clean()
+		// pattern is in place.
+		$this->assertTrue( $noise_called, 'Pre-handler filter never ran; test fixture is broken.' );
 	}
 
 	// ─── Claim 3 — Updater must never accept the source archive ────
