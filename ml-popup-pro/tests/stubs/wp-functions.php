@@ -230,6 +230,11 @@ if ( ! function_exists( 'home_url' ) ) {
 		return 'http://example.test' . $path;
 	}
 }
+if ( ! function_exists( 'admin_url' ) ) {
+	function admin_url( $path = '/', $scheme = 'admin' ) {
+		return 'http://example.test/wp-admin/' . ltrim( $path, '/' );
+	}
+}
 
 if ( ! function_exists( 'is_admin' ) ) {
 	function is_admin() { return false; }
