@@ -261,3 +261,38 @@ if ( ! function_exists( 'current_time' ) ) {
 		return gmdate( 'Y-m-d H:i:s' );
 	}
 }
+
+// Filter / action stubs. apply_filters returns the 2nd argument
+// unless a registered callback registered for that hook transforms it
+// via the in-memory store.
+if ( ! function_exists( 'apply_filters' ) ) {
+	function apply_filters( $hook, $value, ...$args ) {
+		$cb = $GLOBALS['__mlpp_filter_callbacks'][ $hook ] ?? [];
+		foreach ( $cb as $fn ) {
+			if ( is_callable( $fn ) ) {
+				$value = $fn( $value, ...$args );
+			}
+		}
+		return $value;
+	}
+}
+if ( ! function_exists( 'add_filter' ) ) {
+	function add_filter( $hook, $callback, $priority = 10, $accepted_args = 1 ) {
+		$GLOBALS['__mlpp_filter_callbacks'][ $hook ][] = $callback;
+		return true;
+	}
+}
+if ( ! function_exists( 'remove_filter' ) ) {
+	function remove_filter( $hook, $callback = '', $priority = 10 ) {
+		if ( '' === $callback || empty( $GLOBALS['__mlpp_filter_callbacks'][ $hook ] ) ) {
+			unset( $GLOBALS['__mlpp_filter_callbacks'][ $hook ] );
+			return true;
+		}
+		$list = &$GLOBALS['__mlpp_filter_callbacks'][ $hook ];
+		foreach ( $list as $i => $fn ) {
+			if ( $fn === $callback ) { unset( $list[ $i ] ); }
+		}
+		$GLOBALS['__mlpp_filter_callbacks'][ $hook ] = array_values( $list );
+		return true;
+	}
+}
