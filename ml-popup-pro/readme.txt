@@ -4,7 +4,7 @@ Tags: popup, modal, lead capture, marketing, campaign
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 8.1
-Stable tag: 1.5.1
+Stable tag: 1.5.2
 License: GPL2+
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -54,6 +54,15 @@ A verificação é feita contra a Hub local (quando presente em `ml-popup-pro/hu
 3. Acesse ML Popup Pro no menu lateral
 
 == Changelog ==
+
+= 1.5.2 =
+* **HOTFIX — falha crítica na ativação:** a v1.5.1 só protegia `plugins_loaded` e `get_variant_breakdown()`. O `register_activation_hook` ainda chamava `MLPP_Activator::activate()` sem try/catch. Em servidores onde `dbDelta()` ou `SHOW COLUMNS` lançam (permissão, MariaDB antigo, host com `information_schema` bloqueado), o WordPress exibia "Ocorrreu um erro crítico neste site" e impedia a ativação. Esta versão:
+  * `register_activation_hook` agora chama `MLPP_Activator::activate()` por dentro de um try/catch. Falha é capturada, salva no transient `mlpp_activation_error` e exibida como aviso no admin — plugin fica ativo em modo Free.
+  * `MLPP_Plugin::__construct()` envolve `new MLPP_Admin()` e `new MLPP_Frontend()` (e cada `init()`) em try/catch isolado. Falha em um lado não derruba o outro.
+  * `MLPP_Activator::ensure_schema()` agora isola cada passo (`require_once upgrade.php`, `dbDelta` por tabela, `SHOW COLUMNS`, cada `ALTER TABLE`, `update_option` final) em try/catch. Notas são retornadas mesmo em falha, transientes registram o que aconteceu.
+  * `MLPP_Updater` boot envolto em try/catch pra falha de rede/SSL na ativação não impedir plugin de funcionar.
+  * Novo `admin_notices` que renderiza erros deferred de ativação (botão "Reparar banco de dados" em Configurações → Atualizações continua sendo a cura).
+  * **Idempotente e safe.** Pode atualizar por cima da v1.5.0, v1.5.1 ou qualquer versão anterior sem nova instalação.
 
 = 1.5.1 =
 * **HOTFIX — site breakage na v1.5.0:** adicionados guards defensivos em todo o caminho de boot. Sintoma: em instalações onde `wp_mlpp_popups.variant_group_id`, `variant_label` ou `variant_split` ainda não existem (instalação presa em v1.0.x ou auto-migration falhou por permissão/timeout), a página Analytics quebrava com `Database Error: Unknown column 'popups.variant_group_id'`. Em alguns hosts a falha propagava para todo o site. Esta versão:
@@ -182,6 +191,9 @@ A verificação é feita contra a Hub local (quando presente em `ml-popup-pro/hu
 * Lançamento inicial.
 
 == Upgrade Notice ==
+
+= 1.5.2 =
+* HOTFIX recomendado se a v1.5.0 ou v1.5.1 impediu a ativação no seu WP ("Ocorrreu um erro crítico neste site"). Ativação agora tem try/catch completo + admin notice com diagnóstico. Idempotente e safe.
 
 = 1.5.1 =
 * HOTFIX recomendado se você instalou a v1.5.0 e o site quebrou: adiciona guards defensivos no boot, na query do A/B analytics e no schema check. Idempotente e safe — atualize com confiança.

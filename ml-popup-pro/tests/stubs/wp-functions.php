@@ -109,6 +109,24 @@ if ( ! function_exists( 'delete_option' ) ) {
 	}
 }
 
+if ( ! function_exists( 'set_transient' ) ) {
+	function set_transient( $key, $value, $expiration = 0 ) {
+		$GLOBALS['__mlpp_transients'][ $key ] = $value;
+		return true;
+	}
+}
+if ( ! function_exists( 'get_transient' ) ) {
+	function get_transient( $key ) {
+		return $GLOBALS['__mlpp_transients'][ $key ] ?? false;
+	}
+}
+if ( ! function_exists( 'delete_transient' ) ) {
+	function delete_transient( $key ) {
+		unset( $GLOBALS['__mlpp_transients'][ $key ] );
+		return true;
+	}
+}
+
 if ( ! function_exists( 'delete_site_transient' ) ) {
 	function delete_site_transient( $key ) { return true; }
 }
@@ -242,4 +260,11 @@ if ( ! function_exists( 'current_time' ) ) {
 	function current_time( $type = 'mysql' ) {
 		return gmdate( 'Y-m-d H:i:s' );
 	}
+}
+
+// Admin notice rendering helpers used by the deferred-error admin_notices
+// hook. The test runner never echoes admin markup, but the closures
+// reference these functions to assemble strings.
+if ( ! function_exists( 'esc_html' ) ) {
+	// Defined earlier in this file, but check again for completeness.
 }
