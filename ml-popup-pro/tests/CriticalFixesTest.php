@@ -122,15 +122,20 @@ final class CriticalFixesTest extends TestCase {
 
 		// Capture the JSON envelope wp_send_json_* echoes. The wp-functions
 		// stubs throw a RuntimeException to terminate the request, which
-		// we treat as expected here (it stands in for wp_die()).
+		// we treat as expected here (it stands in for wp_die()-then-exit()).
 		ob_start();
 		$threw = false;
 		try {
 			$analytics = new MLPP_Analytics();
-			$_POST = [ 'popup_id' => 0, 'event_type' => 'invalid' ];
+			// Use a VALID popup_id + valid event_type so the handler flows
+			// past the early-return validation and reaches the
+			// apply_filters('mlpp_event_rate_limit_window', …) call — that's
+			// the exact spot where stray bytes would otherwise leak before
+			// ob_clean().
+			$_POST = [ 'popup_id' => 1, 'event_type' => 'impression' ];
 			$analytics->handle_ajax_event();
 		} catch ( \RuntimeException $e ) {
-			// Expected: wp_send_json_error()'s stub throws to mimic
+			// Expected: wp_send_json_success()'s stub throws to mimic
 			// wp_die()-then-exit() in production.
 			$threw = true;
 			$body  = ob_get_clean();
@@ -146,6 +151,9 @@ final class CriticalFixesTest extends TestCase {
 		// response plus a valid JSON envelope proves the ob_start()/ob_clean()
 		// pattern is in place.
 		$this->assertTrue( $noise_called, 'Pre-handler filter never ran; test fixture is broken.' );
+
+		// Clean up so the filter doesn't leak across tests.
+		remove_filter( 'mlpp_event_rate_limit_window' );
 	}
 
 	// ─── Claim 3 — Updater must never accept the source archive ────
@@ -184,7 +192,8 @@ final class CriticalFixesTest extends TestCase {
 			return [ 'https://mirror.example.com/ml-popup-pro-v1.5.4.zip?token=abc' ];
 		} );
 		$urls = $method->invoke( new MLPP_Updater(), $release );
-		remove_filter( 'mlpp_zip_url_mirrors', '__return_empty_array' );
+		// Clean up the filter so it doesn't leak into the next test.
+		remove_filter( 'mlpp_zip_url_mirrors' );
 		$this->assertContains( $urls[0], $urls ); // primary
 		$this->assertContains( 'https://mirror.example.com/ml-popup-pro-v1.5.4.zip?token=abc', $urls );
 	}
