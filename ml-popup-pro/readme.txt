@@ -4,7 +4,7 @@ Tags: popup, modal, lead capture, marketing, campaign
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 8.1
-Stable tag: 1.5.0
+Stable tag: 1.5.1
 License: GPL2+
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -54,6 +54,14 @@ A verificação é feita contra a Hub local (quando presente em `ml-popup-pro/hu
 3. Acesse ML Popup Pro no menu lateral
 
 == Changelog ==
+
+= 1.5.1 =
+* **HOTFIX — site breakage na v1.5.0:** adicionados guards defensivos em todo o caminho de boot. Sintoma: em instalações onde `wp_mlpp_popups.variant_group_id`, `variant_label` ou `variant_split` ainda não existem (instalação presa em v1.0.x ou auto-migration falhou por permissão/timeout), a página Analytics quebrava com `Database Error: Unknown column 'popups.variant_group_id'`. Em alguns hosts a falha propagava para todo o site. Esta versão:
+  * `Analytics::get_variant_breakdown()` agora checa `table_has_column()` antes de rodar a query JOIN. Se a coluna não existe, retorna `[]` em vez de quebrar.
+  * `MLPP_Admin::page_analytics()` envolve a chamada em try/catch — degrada graciosamente.
+  * `plugins_loaded` callback em `ml-popup-pro.php` envolve `maybe_upgrade()` e `new MLPP_Plugin()` em try/catch. Se a auto-migration falhar, o site continua rodando e um `error_log()` é gravado. Use o botão "🛠 Reparar banco de dados" em Configurações → Atualizações para forçar migração.
+  * Novo helper privado `MLPP_Analytics::table_has_column()` com fallback `information_schema` → `SHOW COLUMNS` (cobre hosts que bloqueiam `information_schema`).
+  * Sem breaking changes para quem já estava em v1.5.0.
 
 = 1.5.0 =
 * **🌑 Dark mode (Free):** nova seção na aba 🎨 Identidade visual com checkbox "Tema escuro". Quando ativado, o plugin enfileira `admin-dark.css` e adiciona `body.mlpp-dark` em todas as páginas admin do plugin (independente do tema global do WP). Paleta dark re-mapea as CSS variables `--ml-brand`, `--ml-ink`, `--ml-surface`, etc. afim de deixar cards, tabelas, formulários e o hero com contraste confortável.
@@ -174,6 +182,9 @@ A verificação é feita contra a Hub local (quando presente em `ml-popup-pro/hu
 * Lançamento inicial.
 
 == Upgrade Notice ==
+
+= 1.5.1 =
+* HOTFIX recomendado se você instalou a v1.5.0 e o site quebrou: adiciona guards defensivos no boot, na query do A/B analytics e no schema check. Idempotente e safe — atualize com confiança.
 
 = 1.5.0 =
 * Dark mode opcional para todas as telas administrativas (independente do tema WP) e dashboard de comparação A/B por variante (Pro) com CTR/CVR calculados. Atualize para UI completa.

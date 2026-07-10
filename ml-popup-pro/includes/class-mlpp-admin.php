@@ -213,7 +213,17 @@ final class MLPP_Admin {
 		$recent           = $this->analytics->get_recent_events( 25, $filters );
 		$best             = $this->analytics->get_best_popup( $filters );
 		$device_breakdown = $this->analytics->get_device_breakdown( $filters );
-		$variant_breakdown = $this->analytics->get_variant_breakdown( $filters );
+		// Defensive: A/B breakdown is optional and depends on schema columns
+		// added in v1.3.0. If the install is frozen on an older schema or
+		// migration failed, fall back to an empty array so the page still
+		// renders.
+		$variant_breakdown = array();
+		try {
+			$variant_breakdown = $this->analytics->get_variant_breakdown( $filters );
+		} catch ( \Throwable $e ) {
+			error_log( '[ml-popup-pro] variant_breakdown failed: ' . $e->getMessage() );
+			$variant_breakdown = array();
+		}
 		$popups           = $this->storage->get_all_popups();
 		$toast            = $this->get_toast();
 		require MLPP_PLUGIN_DIR . 'admin/views/analytics.php';

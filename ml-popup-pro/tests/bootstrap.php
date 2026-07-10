@@ -32,6 +32,9 @@ if ( ! defined( 'COOKIEPATH' ) ) {
 if ( ! defined( 'COOKIE_DOMAIN' ) ) {
 	define( 'COOKIE_DOMAIN', '' );
 }
+if ( ! defined( 'DB_NAME' ) ) {
+	define( 'DB_NAME', 'mlpp_test_db' );
+}
 
 if ( ! defined( 'MLPP_VERSION' ) ) {
 	define( 'MLPP_VERSION', '1.4.0-test' );
@@ -57,3 +60,4 @@ require_once MLPP_PLUGIN_DIR . 'includes/class-mlpp-security.php';
 require_once MLPP_PLUGIN_DIR . 'includes/class-mlpp-rules.php';
 require_once MLPP_PLUGIN_DIR . 'includes/class-mlpp-storage.php';
 require_once MLPP_PLUGIN_DIR . 'includes/class-mlpp-license.php';
+require_once MLPP_PLUGIN_DIR . 'includes/class-mlpp-analytics.php';

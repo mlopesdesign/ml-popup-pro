@@ -112,23 +112,30 @@ final class MLPP_Analytics {
 	 * Each variant row carries its label, weighted show rate (when
 	 * available) and event counts so the admin can compare CTR/CVR.
 	 *
+	 * Defensive: if the variant columns are missing in the DB (install
+	 * frozen on an older version, auto-migration failed, etc.) this method
+	 * returns an empty array instead of throwing. The admin view treats
+	 * the empty result as "no A/B tests yet" and stays usable.
+	 *
 	 * @return array<int, array{group_id:int,popup_id:int,popup_name:string,variant_label:string,split:int,impressions:int,clicks:int,conversions:int}>
 	 */
 	public function get_variant_breakdown( array $filters = [] ): array {
 		global $wpdb;
-		$p = $wpdb->prefix;
+		$popups_table = $wpdb->prefix . 'mlpp_popups';
+		$events_table = $this->table();
 
-		// Step 1: gather variant rows (joined with popup name).
-		$popups = $wpdb->prefix . 'mlpp_popups';
-		$events = $this->table();
+		// Defensive: if either table is missing the variant columns, skip silently.
+		if ( ! $this->table_has_column( $popups_table, 'variant_group_id' ) ) {
+			return [];
+		}
+		if ( ! $this->table_has_column( $events_table, 'variant_label' ) ) {
+			return [];
+		}
 
 		[ $where, $params ] = $this->build_where( $filters );
 		// Restrict to A/B participating popups.
 		$where_extra = $where ? ' AND popups.variant_group_id > 0' : 'WHERE popups.variant_group_id > 0';
-		$params2     = $params;
-		array_unshift( $params2, 'variant_group_id' );
 
-		// Count events for each popup_id+variant_label combo.
 		$sql = "SELECT popups.variant_group_id AS group_id,
 				popups.id AS popup_id,
 				popups.name AS popup_name,
@@ -137,16 +144,19 @@ final class MLPP_Analytics {
 				SUM(CASE WHEN events.event_type = 'impression' THEN 1 ELSE 0 END) AS impressions,
 				SUM(CASE WHEN events.event_type IN ('primary_click','secondary_click','image_click') THEN 1 ELSE 0 END) AS clicks,
 				SUM(CASE WHEN events.event_type = 'conversion' THEN 1 ELSE 0 END) AS conversions
-			FROM {$events} AS events
-			JOIN {$popups} AS popups ON popups.id = events.popup_id
+			FROM {$events_table} AS events
+			JOIN {$popups_table} AS popups ON popups.id = events.popup_id
 			{$where}{$where_extra}
 			GROUP BY events.popup_id, events.variant_label
 			ORDER BY popups.variant_group_id ASC, popups.id ASC, events.variant_label ASC";
 
-		if ( $params2 ) {
-			$rows = $wpdb->get_results( $wpdb->prepare( $sql, $params2 ), ARRAY_A );
-		} else {
-			$rows = $wpdb->get_results( $sql, ARRAY_A );
+		try {
+			$rows = $params
+				? $wpdb->get_results( $wpdb->prepare( $sql, $params ), ARRAY_A )
+				: $wpdb->get_results( $sql, ARRAY_A );
+		} catch ( \Throwable $e ) {
+			error_log( '[ml-popup-pro] get_variant_breakdown failed: ' . $e->getMessage() );
+			return [];
 		}
 
 		if ( ! is_array( $rows ) ) {
@@ -156,17 +166,46 @@ final class MLPP_Analytics {
 		$out = [];
 		foreach ( $rows as $r ) {
 			$out[] = [
-				'group_id'       => (int) ( $r['group_id'] ?? 0 ),
-				'popup_id'       => (int) ( $r['popup_id'] ?? 0 ),
-				'popup_name'     => (string) ( $r['popup_name'] ?? '' ),
-				'variant_label'  => (string) ( $r['variant_label'] ?? '' ),
-				'split'          => (int) ( $r['variant_split'] ?? 0 ),
-				'impressions'    => (int) ( $r['impressions'] ?? 0 ),
-				'clicks'         => (int) ( $r['clicks'] ?? 0 ),
-				'conversions'    => (int) ( $r['conversions'] ?? 0 ),
+				'group_id'      => (int) ( $r['group_id'] ?? 0 ),
+				'popup_id'      => (int) ( $r['popup_id'] ?? 0 ),
+				'popup_name'    => (string) ( $r['popup_name'] ?? '' ),
+				'variant_label' => (string) ( $r['variant_label'] ?? '' ),
+				'split'         => (int) ( $r['variant_split'] ?? 0 ),
+				'impressions'   => (int) ( $r['impressions'] ?? 0 ),
+				'clicks'        => (int) ( $r['clicks'] ?? 0 ),
+				'conversions'   => (int) ( $r['conversions'] ?? 0 ),
 			];
 		}
 		return $out;
+	}
+
+	/**
+	 * True when the table exists and the column is present in its schema.
+	 * Used to guard analytics queries that reference newer columns
+	 * added in v1.3.0+ against installs frozen on older schema versions.
+	 */
+	private function table_has_column( string $table, string $column ): bool {
+		global $wpdb;
+		try {
+			$exists = $wpdb->get_var(
+				$wpdb->prepare(
+					"SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = %s AND table_name = %s AND column_name = %s",
+					DB_NAME,
+					$table,
+					$column
+				)
+			);
+			return (int) $exists > 0;
+		} catch ( \Throwable $e ) {
+			// information_schema may be unavailable (e.g. some managed hosts / hyperscaler);
+			// fall back to a SHOW COLUMNS probe.
+			try {
+				$cols = $wpdb->get_col( "SHOW COLUMNS FROM {$table}" );
+				return is_array( $cols ) && in_array( $column, array_map( 'strval', $cols ), true );
+			} catch ( \Throwable $e2 ) {
+				return false;
+			}
+		}
 	}
 
 	/**

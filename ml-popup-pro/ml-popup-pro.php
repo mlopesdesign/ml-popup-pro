@@ -4,7 +4,7 @@
  * Plugin URI: https://mlopesdesign.com.br
  * Update URI: https://github.com/mlopesdesign/ml-popup-pro
  * Description: Gerenciador premium de popups para WordPress. Campanhas, regras de exibição, agendamento, templates, analytics e shortcodes com identidade visual ML.
- * Version: 1.5.0
+ * Version: 1.5.1
  * Requires at least: 6.0
  * Requires PHP: 8.1
  * Author: ML Lopes Design
@@ -17,7 +17,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'MLPP_VERSION', '1.5.0' );
+define( 'MLPP_VERSION', '1.5.1' );
 define( 'MLPP_PLUGIN_FILE', __FILE__ );
 define( 'MLPP_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'MLPP_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
@@ -44,10 +44,22 @@ $GLOBALS['mlpp_updater']->init();
 add_action( 'plugins_loaded', function () {
 	static $instance = null;
 	if ( $instance === null ) {
-		// Repair/upgrade the database schema after a plugin update
-		// (activation hooks do not fire on update).
-		MLPP_Activator::maybe_upgrade();
-		$instance = new MLPP_Plugin();
+		// Defensive boot: schema migration and Plugin construction are
+		// wrapped so a failed auto-migration on a stale install never
+		// 500s the whole site. Worst case the plugin runs Free with the
+		// last-known-good schema and surfaces an admin notice to retry
+		// the repair from Configurações > Atualizações.
+		try {
+			MLPP_Activator::maybe_upgrade();
+		} catch ( \Throwable $e ) {
+			error_log( '[ml-popup-pro] maybe_upgrade failed: ' . $e->getMessage() );
+		}
+		try {
+			$instance = new MLPP_Plugin();
+		} catch ( \Throwable $e ) {
+			error_log( '[ml-popup-pro] boot failed: ' . $e->getMessage() );
+			$instance = null;
+		}
 	}
 } );
 

@@ -237,3 +237,9 @@ if ( ! function_exists( 'has_tag' ) ) {
 if ( ! function_exists( 'wp_is_mobile' ) ) {
 	function wp_is_mobile() { return false; }
 }
+
+if ( ! function_exists( 'current_time' ) ) {
+	function current_time( $type = 'mysql' ) {
+		return gmdate( 'Y-m-d H:i:s' );
+	}
+}
