@@ -20,6 +20,11 @@ final class MLPP_Updater {
 	const PLUGIN_BASENAME = 'ml-popup-pro/ml-popup-pro.php';
 	const CACHE_KEY       = 'mlpp_github_update_cache';
 	const CACHE_TTL       = 6 * HOUR_IN_SECONDS;
+	// When the pre-flight reachability probe fails (GH Releases CDN 504
+	// storm, transient network blip) we still cache the metadata but
+	// with a much shorter TTL so the next operator "Verificar agora"
+	// picks up the recovery without waiting 6h.
+	const CACHE_TTL_ERROR = 5 * MINUTE_IN_SECONDS;
 	const API_TIMEOUT     = 15;
 
 	/**
@@ -104,6 +109,15 @@ final class MLPP_Updater {
 			);
 		}
 
+		// Pre-flight reachability check: if the GH Releases CDN is
+		// returning 504 (known to happen), the release is real but
+		// WP's auto-update will silently fail. Cache the metadata with
+		// a short TTL so the next user-side "Verificar agora" picks up
+		// the recovery quickly. Without this, the operator is stuck
+		// waiting 6h for the cache to expire even after CDN recovers.
+		$reachable = $this->url_reachable( $zip_url );
+		$ttl       = $reachable ? self::CACHE_TTL : self::CACHE_TTL_ERROR;
+
 		// NOTE: Per project security policy, we explicitly do NOT fall back
 		// to GitHub's auto-generated `archive/refs/tags/<tag>.zip` (the
 		// "zipball"). That archive contains the repository's source tree
@@ -125,7 +139,7 @@ final class MLPP_Updater {
 		];
 
 		delete_site_option( 'mlpp_github_update_last_error' );
-		set_site_transient( self::CACHE_KEY, $release, self::CACHE_TTL );
+		set_site_transient( self::CACHE_KEY, $release, $ttl );
 
 		return $release;
 	}
@@ -319,7 +333,7 @@ final class MLPP_Updater {
 
 		$response = wp_remote_request( $url, [
 			'method'      => 'HEAD',
-			'timeout'     => 8,
+			'timeout'     => 15,
 			'redirection' => 5,
 			'user-agent'  => 'ML-Popup-Pro-Updater/' . MLPP_VERSION . ' WordPress/' . get_bloginfo( 'version' ),
 			'sslverify'   => true,

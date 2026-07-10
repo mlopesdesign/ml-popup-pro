@@ -4,7 +4,7 @@
  * Plugin URI: https://mlopesdesign.com.br
  * Update URI: https://github.com/mlopesdesign/ml-popup-pro
  * Description: Gerenciador premium de popups para WordPress. Campanhas, regras de exibição, agendamento, templates, analytics e shortcodes com identidade visual ML.
- * Version: 1.5.4
+ * Version: 1.5.5
  * Requires at least: 6.0
  * Requires PHP: 8.1
  * Author: ML Lopes Design
@@ -17,7 +17,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'MLPP_VERSION', '1.5.4' );
+define( 'MLPP_VERSION', '1.5.5' );
 define( 'MLPP_PLUGIN_FILE', __FILE__ );
 define( 'MLPP_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'MLPP_PLUGIN_URL', plugin_dir_url( __FILE__ ) );

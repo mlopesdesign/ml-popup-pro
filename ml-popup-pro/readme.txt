@@ -4,7 +4,7 @@ Tags: popup, modal, lead capture, marketing, campaign
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 8.1
-Stable tag: 1.5.4
+Stable tag: 1.5.5
 License: GPL2+
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -54,6 +54,12 @@ A verificação é feita contra a Hub local (quando presente em `ml-popup-pro/hu
 3. Acesse ML Popup Pro no menu lateral
 
 == Changelog ==
+
+= 1.5.5 =
+* **Bug 1 — atalhos faltando em `render_admin_nav()`:** a barra horizontal de atalhos que aparece no topo de cada página admin do plugin só listava 3 itens (Dashboard, Pop-ups, Adicionar pop-up). Templates, Analytics, **Configurações** e Histórico não tinham atalho — pra acessar esses o operador tinha que ir pelo menu lateral. Adicionados os 4 submenus faltantes na ordem em que `register_menus()` registra.
+* **Bug 2 — updater travado em "12h sem ver atualização":** `get_latest_release()` cacheava o release com TTL fixo de 6h. Quando o `url_reachable()` falhava (CDN do GitHub Releases em 504 — conhecido problema intermitente do `releases/download/`), o plugin cacheava a falha por 6h, então mesmo após o operador limpar transients manualmente, o próximo check só rolava 6h depois. Mudança: pre-flight `url_reachable()` durante a busca do release; em caso de falha, o release é cacheado com TTL curto de 5 min (`CACHE_TTL_ERROR`) em vez de 6h. Próximo "Verificar agora" pega a recuperação quase em tempo real.
+* **Bug 3 — timeout de 8s insuficiente no HEAD do CDN:** o probe `url_reachable()` usava `wp_remote_request` com timeout de 8s. O CDN do GH Releases pode demorar mais que isso em horários de pico, dando false-negative mesmo com release válido. Aumentado para 15s.
+* Sem features novas. Compat update sobre qualquer versão anterior. Idempotente.
 
 = 1.5.4 =
 * **Bug crítico 1 — frontend quebrava em sites com schema legado:** `MLPP_Rules::get_eligible_popups()` acessava `$raw_popup['rules']` direto em toda página com popup ativo. Em sites com schema `wp_mlpp_popups` da v1.0.x (sem coluna `rules`) ou com `rules` retornando `null`, o acesso gerava "Undefined array key" Warning. Em hosts com `set_error_handler` que promove Warning → Exception (várias hospedagens de revenda Magento + WP compartilhado têm isso), o request inteiro quebrava — fatal que afetava admin + frontend + AJAX. Corrigido para `$raw_popup['rules'] ?? null`. Mesmo tratamento aplicado a `$a['priority'] ?? 10` no `usort` e `$popup['rules'] ?? null` em `popup_matches()`. Cobrido por `RulesGuardTest::test_get_eligible_popups_with_no_rules_key_does_not_throw_warning`.
@@ -193,6 +199,9 @@ A verificação é feita contra a Hub local (quando presente em `ml-popup-pro/hu
 * Lançamento inicial.
 
 == Upgrade Notice ==
+
+= 1.5.5 =
+* **RECOMENDADO se você usa a aba Configurações pelo atalho horizontal ou se o updater travou em "12h sem ver atualização".** Adiciona os 4 atalhos faltando no nav-bar e conserta a lógica de cache do updater para responder em minutos (não 6h) quando o CDN do GH se recupera. Idempotente, safe, sem features novas.
 
 = 1.5.4 =
 * **RECOMENDADO para qualquer site que ativa ML Popup Pro com schema legado ou `WP_DEBUG=1` ligado.** Tapa 3 caminhos onde o plugin poderia matar o request inteiro em hospedagem real (warning → exception fatal). Sem features novas.

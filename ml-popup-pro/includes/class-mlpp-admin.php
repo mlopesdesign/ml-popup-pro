@@ -102,9 +102,13 @@ final class MLPP_Admin {
 	public function render_admin_nav(): void {
 		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( (string) $_GET['page'] ) ) : 'ml-popup-pro';
 		$items = [
-			'ml-popup-pro'   => [ 'Dashboard', admin_url( 'admin.php?page=ml-popup-pro' ) ],
-			'mlpp-popups'    => [ 'Pop-ups', admin_url( 'admin.php?page=mlpp-popups' ) ],
-			'mlpp-popup-new' => [ 'Adicionar pop-up', admin_url( 'admin.php?page=mlpp-popup-new' ) ],
+			'ml-popup-pro'   => [ 'Dashboard',         admin_url( 'admin.php?page=ml-popup-pro' ) ],
+			'mlpp-popups'    => [ 'Pop-ups',           admin_url( 'admin.php?page=mlpp-popups' ) ],
+			'mlpp-popup-new' => [ 'Adicionar pop-up',  admin_url( 'admin.php?page=mlpp-popup-new' ) ],
+			'mlpp-templates' => [ 'Templates',         admin_url( 'admin.php?page=mlpp-templates' ) ],
+			'mlpp-analytics' => [ 'Analytics',         admin_url( 'admin.php?page=mlpp-analytics' ) ],
+			'mlpp-settings'  => [ 'Configurações',     admin_url( 'admin.php?page=mlpp-settings' ) ],
+			'mlpp-audit'     => [ 'Histórico',         admin_url( 'admin.php?page=mlpp-audit' ) ],
 		];
 
 		$active = $page;
