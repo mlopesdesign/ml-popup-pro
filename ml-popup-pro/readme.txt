@@ -4,7 +4,7 @@ Tags: popup, modal, lead capture, marketing, campaign
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 8.1
-Stable tag: 1.5.5
+Stable tag: 1.5.6
 License: GPL2+
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -54,6 +54,14 @@ A verificação é feita contra a Hub local (quando presente em `ml-popup-pro/hu
 3. Acesse ML Popup Pro no menu lateral
 
 == Changelog ==
+
+= 1.5.6 =
+* **Infraestrutura Free/Pro pronta, master switch OFF:** novo `includes/class-mlpp-gates.php` com constante `MLPP_Gates::ENFORCED = false` por padrão. Helpers `mlpp_capability( $feature )` e `mlpp_render_upgrade_card( $feature, $description )` já estão em todo o código relevante. Quando o operador decidir ativar de verdade, é só mudar `ENFORCED` para `true` num commit e publicar.
+* **Features gateadas (infra ligada, mas não ativa):** A/B testing (`select_variants`), goal tracking por CSS selector (`prepare_frontend_popups` → `goal_selectors`), analytics avançado (filtros por período/popup/dispositivo + breakdown por device em `admin/views/analytics.php`), templates sazonais (`class-mlpp-templates.php::get_all()`) e webhook de conversão (`get_frontend_settings()` + frontend payload).
+* **Comportamento atual (gate OFF):** idêntico à v1.5.5. Nada muda pra Free nem Pro até o switch ser ligado.
+* **O que NÃO foi tocado:** `class-mlpp-license.php`, endpoint `https://license.mlopesdesign.com.br/api/license.php`, `verify_remote()`, `map_status()`, `activate()`, `deactivate()`. A Hub fica intocada.
+* **Tests:** novo `tests/GatesTest.php` cobre: estado default permite tudo, catálogo de features, upgrade card markup, compat com `mlpp_is_premium()` legado. Suite total: 47 testes.
+* Identidade preservada, sem features novas, safe upgrade.
 
 = 1.5.5 =
 * **Bug 1 — atalhos faltando em `render_admin_nav()`:** a barra horizontal de atalhos que aparece no topo de cada página admin do plugin só listava 3 itens (Dashboard, Pop-ups, Adicionar pop-up). Templates, Analytics, **Configurações** e Histórico não tinham atalho — pra acessar esses o operador tinha que ir pelo menu lateral. Adicionados os 4 submenus faltantes na ordem em que `register_menus()` registra.
@@ -199,6 +207,9 @@ A verificação é feita contra a Hub local (quando presente em `ml-popup-pro/hu
 * Lançamento inicial.
 
 == Upgrade Notice ==
+
+= 1.5.6 =
+* **RECOMENDADO preparar a base Free/Pro para quando você for ativar.** Adiciona a infraestrutura de gating em 5 features Pro com master switch OFF. O comportamento atual é idêntico à v1.5.5; quando você decidir separar Free/Premium, é só mudar `MLPP_Gates::ENFORCED` para `true` num commit. Idempotente, sem features novas, sem mudar Hub.
 
 = 1.5.5 =
 * **RECOMENDADO se você usa a aba Configurações pelo atalho horizontal ou se o updater travou em "12h sem ver atualização".** Adiciona os 4 atalhos faltando no nav-bar e conserta a lógica de cache do updater para responder em minutos (não 6h) quando o CDN do GH se recupera. Idempotente, safe, sem features novas.

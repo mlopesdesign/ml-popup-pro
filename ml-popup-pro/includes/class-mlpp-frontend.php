@@ -46,6 +46,19 @@ final class MLPP_Frontend {
 	}
 
 	private function prepare_frontend_popups( array $popups ): array {
+		// Gate infrastructure: when the master switch is ON and the site
+		// is on the Free tier, the JS payload must NOT include
+		// goal_selectors (Free can't fire goal conversions) and the
+		// webhook URL must be stripped (Free can't send webhooks). When
+		// the gate is OFF (default), this returns the full data — no
+		// behavior change vs. previous versions.
+		$goal_allowed = function_exists( 'mlpp_capability' )
+			? mlpp_capability( 'goal_tracking' )
+			: true;
+		$webhook_allowed = function_exists( 'mlpp_capability' )
+			? mlpp_capability( 'webhook' )
+			: true;
+
 		$out = [];
 		foreach ( $popups as $p ) {
 			$design        = is_string( $p['design']        ?? null ) ? json_decode( (string) $p['design'],        true ) : (array)( $p['design']        ?? [] );
@@ -77,7 +90,7 @@ final class MLPP_Frontend {
 				'design'           => is_array( $design )        ? $design        : [],
 				'triggers'         => is_array( $triggers )      ? $triggers      : [],
 				'storage_cfg'      => is_array( $storage_cfg )   ? $storage_cfg   : [],
-				'goal_selectors'   => array_values( array_filter( array_map( 'strval', $goal_selectors ) ) ),
+				'goal_selectors'   => $goal_allowed ? array_values( array_filter( array_map( 'strval', $goal_selectors ) ) ) : [],
 				'variant_label'    => (string) ( $p['variant_label'] ?? '' ),
 				'variant_group_id' => (int) ( $p['variant_group_id'] ?? 0 ),
 			];
@@ -97,12 +110,19 @@ final class MLPP_Frontend {
 
 	private function get_frontend_settings(): array {
 		$s = get_option( 'mlpp_settings', [] );
+		// Webhook is gated. When the master switch is OFF (default), this
+		// returns true for everyone, so the option values flow through
+		// unchanged. When the gate is ON + Free tier, the JS payload
+		// receives empty URL + '0' so the frontend skips the POST.
+		$webhook_allowed = function_exists( 'mlpp_capability' )
+			? mlpp_capability( 'webhook' )
+			: true;
 		return [
 			'storage_method'  => esc_attr( $s['storage_method']           ?? 'cookie' ),
 			'expiration_days' => absint( $s['default_expiration_days']     ?? 30 ),
 			'consent_mode'    => esc_attr( $s['consent_mode']              ?? 'off' ),
-			'webhook_url'     => (string) ( $s['webhook_url']              ?? '' ),
-			'webhook_enabled' => (string) ( $s['webhook_enabled']          ?? '0' ),
+			'webhook_url'     => $webhook_allowed ? (string) ( $s['webhook_url']     ?? '' ) : '',
+			'webhook_enabled' => $webhook_allowed ? (string) ( $s['webhook_enabled'] ?? '0' ) : '0',
 		];
 	}
 

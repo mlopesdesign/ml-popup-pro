@@ -102,20 +102,30 @@ $device_labels = [
 	<!-- BREAKDOWN POR DISPOSITIVO -->
 	<section class="mlpp-card" style="margin-top:16px">
 		<div class="mlpp-card-header"><div><h2>Por dispositivo</h2><p class="mlpp-hero-intro">Distribuição de eventos no recorte atual.</p></div></div>
-		<div class="mlpp-stat-grid" style="grid-template-columns:repeat(3,1fr)">
+		<?php if ( function_exists( 'mlpp_capability' ) && mlpp_capability( 'analytics_advanced' ) ) : ?>
+			<div class="mlpp-stat-grid" style="grid-template-columns:repeat(3,1fr)">
+				<?php
+				$device_total = max( 1, array_sum( $device_breakdown ) );
+				foreach ( $device_labels as $dv_key => $dv_label ) :
+					$count = (int) ( $device_breakdown[ $dv_key ] ?? 0 );
+					$pct   = round( $count / $device_total * 100, 1 );
+				?>
+					<article class="mlpp-stat-card">
+						<span class="mlpp-stat-label"><?php echo esc_html( $dv_label ); ?></span>
+						<strong><?php echo esc_html( number_format_i18n( $count ) ); ?></strong>
+						<small><?php echo esc_html( $pct ); ?>% do recorte</small>
+					</article>
+				<?php endforeach; ?>
+			</div>
+		<?php else : ?>
 			<?php
-			$device_total = max( 1, array_sum( $device_breakdown ) );
-			foreach ( $device_labels as $dv_key => $dv_label ) :
-				$count = (int) ( $device_breakdown[ $dv_key ] ?? 0 );
-				$pct   = round( $count / $device_total * 100, 1 );
+			if ( function_exists( 'mlpp_render_upgrade_card' ) ) {
+				mlpp_render_upgrade_card( 'analytics_advanced', 'Filtros por período/popup/dispositivo e a distribuição de eventos por dispositivo exigem o plano Pro. Ative seu serial em Configurações > 🔑 Ativação para liberar.' );
+			} else {
+				echo '<p>Requer plano Pro.</p>';
+			}
 			?>
-				<article class="mlpp-stat-card">
-					<span class="mlpp-stat-label"><?php echo esc_html( $dv_label ); ?></span>
-					<strong><?php echo esc_html( number_format_i18n( $count ) ); ?></strong>
-					<small><?php echo esc_html( $pct ); ?>% do recorte</small>
-				</article>
-			<?php endforeach; ?>
-		</div>
+		<?php endif; ?>
 	</section>
 
 	<!-- MELHOR POPUP + ATIVIDADE RECENTE -->

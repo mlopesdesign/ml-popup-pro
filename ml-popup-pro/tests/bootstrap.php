@@ -66,3 +66,6 @@ require_once MLPP_PLUGIN_DIR . 'includes/class-mlpp-activator.php';
 require_once MLPP_PLUGIN_DIR . 'includes/class-mlpp-analytics.php';
 require_once MLPP_PLUGIN_DIR . 'includes/class-mlpp-updater.php';
 require_once MLPP_PLUGIN_DIR . 'includes/class-mlpp-admin.php';
+require_once MLPP_PLUGIN_DIR . 'includes/class-mlpp-frontend.php';
+require_once MLPP_PLUGIN_DIR . 'includes/class-mlpp-templates.php';
+require_once MLPP_PLUGIN_DIR . 'includes/class-mlpp-gates.php';

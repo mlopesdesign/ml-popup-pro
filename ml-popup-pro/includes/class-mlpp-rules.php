@@ -59,9 +59,29 @@ final class MLPP_Rules {
 	 * `(visitor cookie, group_id)` so the same visitor keeps seeing
 	 * the same variant across page loads.
 	 *
+	 * When the A/B gate is enforced and the site is on the Free tier,
+	 * every popup is treated as a solo — no variant selection happens
+	 * and all eligible popups remain eligible. The Pro check uses
+	 * `mlpp_capability('ab_testing')` so flipping the master switch in
+	 * `class-mlpp-gates.php` is the single source of truth.
+	 *
 	 * @return array<int, array>  Selected popups (always at most one per group).
 	 */
 	private function select_variants( array $eligible ): array {
+		// Gate infrastructure. When the master switch is OFF (default) the
+		// helper returns true for everyone, so the rest of the method runs
+		// as before. When ON + Free tier, every popup falls through to the
+		// `_solo` bucket below and the weighted pick is skipped.
+		$ab_allowed = function_exists( 'mlpp_capability' )
+			? mlpp_capability( 'ab_testing' )
+			: true;
+		if ( ! $ab_allowed ) {
+			$selected = [];
+			foreach ( $eligible as $p ) {
+				$selected[] = $p;
+			}
+			return $selected;
+		}
 		$groups = [];
 		foreach ( $eligible as $p ) {
 			$gid = (int) ( $p['variant_group_id'] ?? 0 );
