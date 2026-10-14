@@ -15,7 +15,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 final class MLPP_Updater {
 
 	const GITHUB_OWNER    = 'mlopesdesign';
-	const GITHUB_REPO     = 'ml-popup-pro';
+	// Repositorio PUBLICO so com os ZIPs; o codigo-fonte sera privado (API responde 404 sem token).
+	const GITHUB_REPO     = 'ml-popup-pro-releases';
 	const PLUGIN_SLUG     = 'ml-popup-pro';
 	const PLUGIN_BASENAME = 'ml-popup-pro/ml-popup-pro.php';
 	const CACHE_KEY       = 'mlpp_github_update_cache';
@@ -95,19 +96,8 @@ final class MLPP_Updater {
 			return null;
 		}
 
+		// Somente o asset oficial da propria versao. Sem URL "adivinhada" e sem ZIP de outra versao.
 		$zip_url = $this->find_zip_asset( $body, $version );
-
-		// Deterministic fallback. Works when the asset name follows the project standard.
-		if ( '' === $zip_url ) {
-			$zip_url = sprintf(
-				'https://github.com/%s/%s/releases/download/v%s/%s-v%s.zip',
-				self::GITHUB_OWNER,
-				self::GITHUB_REPO,
-				$version,
-				self::PLUGIN_SLUG,
-				$version
-			);
-		}
 
 		// Pre-flight reachability check: if the GH Releases CDN is
 		// returning 504 (known to happen), the release is real but
@@ -115,7 +105,7 @@ final class MLPP_Updater {
 		// a short TTL so the next user-side "Verificar agora" picks up
 		// the recovery quickly. Without this, the operator is stuck
 		// waiting 6h for the cache to expire even after CDN recovers.
-		$reachable = $this->url_reachable( $zip_url );
+		$reachable = '' !== $zip_url && $this->url_reachable( $zip_url );
 		$ttl       = $reachable ? self::CACHE_TTL : self::CACHE_TTL_ERROR;
 
 		// NOTE: Per project security policy, we explicitly do NOT fall back
@@ -135,6 +125,7 @@ final class MLPP_Updater {
 			'zip_url'      => esc_url_raw( $zip_url ),
 			'release_url'  => esc_url_raw( (string) ( $body['html_url'] ?? '' ) ),
 			'published_at' => (string) ( $body['published_at'] ?? '' ),
+			'reachable'    => $reachable,
 			'zip_fallbacks'=> [], // filled by apply_zip_fallbacks() if theme/addon adds mirrors
 		];
 
@@ -154,26 +145,22 @@ final class MLPP_Updater {
 			return '';
 		}
 
-		$expected = self::PLUGIN_SLUG . '-v' . $version . '.zip';
-		$fallback = '';
+		// Aceita somente o ZIP desta versao. O fallback antigo aceitava ml-popup-pro-v<qualquer>.zip
+		// e podia instalar uma versao diferente da anunciada.
+		$expected = [
+			self::PLUGIN_SLUG . '-v' . $version . '.zip',
+			self::PLUGIN_SLUG . '-' . $version . '.zip',
+		];
 
 		foreach ( $release_body['assets'] as $asset ) {
 			$name = (string) ( $asset['name'] ?? '' );
 			$url  = (string) ( $asset['browser_download_url'] ?? '' );
-			if ( '' === $name || '' === $url ) {
-				continue;
-			}
-
-			if ( $expected === $name ) {
+			if ( '' !== $url && in_array( $name, $expected, true ) ) {
 				return $url;
-			}
-
-			if ( preg_match( '/^ml-popup-pro-v[0-9]+(?:\.[0-9]+)*\.zip$/', $name ) ) {
-				$fallback = $url;
 			}
 		}
 
-		return $fallback;
+		return '';
 	}
 
 	/**
@@ -246,7 +233,11 @@ final class MLPP_Updater {
 		// Pick the first URL that is actually reachable. GitHub Releases CDN
 		// (releases/download) frequently returns 504/503/timed-out; the
 		// deterministic URL and the archive zipball are reliable fallbacks.
-		$package = $this->pick_working_zip_url( $release );
+		// O teste de acesso ao ZIP ja foi feito ao buscar a release (e fica em cache). So testa de novo
+		// quando aquele teste falhou; antes isso fazia um HEAD ao GitHub a cada leitura do transient.
+		$package = ! empty( $release['reachable'] ) && ! empty( $release['zip_url'] )
+			? (string) $release['zip_url']
+			: $this->pick_working_zip_url( $release );
 
 		if ( '' === $package ) {
 			$this->store_last_error( 'Nenhuma URL de download acessível para a versão ' . $release['version'] . '. Tente novamente em alguns minutos.' );
@@ -263,7 +254,7 @@ final class MLPP_Updater {
 			'tested'         => get_bloginfo( 'version' ),
 			'requires'       => '6.0',
 			'requires_php'   => '8.1',
-			'icons'          => [],
+			'icons'          => $this->icons(),
 			'banners'        => [],
 			'banners_rtl'    => [],
 			'upgrade_notice' => '',
@@ -372,6 +363,7 @@ final class MLPP_Updater {
 			'version'           => $release['version'],
 			'author'            => '<a href="https://mlopesdesign.com.br">ML Lopes Design</a>',
 			'homepage'          => 'https://github.com/' . self::GITHUB_OWNER . '/' . self::GITHUB_REPO,
+			'icons'             => $this->icons(),
 			'requires'          => '6.0',
 			'requires_php'      => '8.1',
 			'tested'            => get_bloginfo( 'version' ),
@@ -383,6 +375,15 @@ final class MLPP_Updater {
 				'description' => '<p>ML Popup Pro — gerenciador comercial de popups.</p>',
 				'changelog'   => '<pre>' . esc_html( $release['changelog'] ) . '</pre>',
 			],
+		];
+	}
+
+	private function icons(): array {
+		$base = MLPP_PLUGIN_URL . 'admin/assets/';
+		return [
+			'1x'      => $base . 'icon-128x128.png',
+			'2x'      => $base . 'icon-256x256.png',
+			'default' => $base . 'icon-256x256.png',
 		];
 	}
 

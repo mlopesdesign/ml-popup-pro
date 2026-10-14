@@ -4,7 +4,7 @@ Tags: popup, modal, lead capture, marketing, campaign
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 8.1
-Stable tag: 1.5.6
+Stable tag: 1.5.7
 License: GPL2+
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -54,6 +54,13 @@ A verificação é feita contra a Hub local (quando presente em `ml-popup-pro/hu
 3. Acesse ML Popup Pro no menu lateral
 
 == Changelog ==
+
+= 1.5.7 =
+* **Atualizações pelo repositório público de releases** (`ml-popup-pro-releases`); o código-fonte passa a ser privado.
+* Motor de atualização aceita somente o ZIP da própria versão (`ml-popup-pro-v{versão}.zip`); removidos o fallback para ZIP de outra versão e a URL "adivinhada".
+* O teste de acesso ao ZIP não roda mais a cada leitura do transient (economiza uma chamada ao GitHub por página do admin).
+* Ícones do plugin na tela de atualizações; ZIP de produção sem testes nem arquivos de desenvolvimento.
+* Desinstalar sempre limpa o cache do updater (os dados continuam respeitando a opção "apagar dados").
 
 = 1.5.6 =
 * **Infraestrutura Free/Pro pronta, master switch OFF:** novo `includes/class-mlpp-gates.php` com constante `MLPP_Gates::ENFORCED = false` por padrão. Helpers `mlpp_capability( $feature )` e `mlpp_render_upgrade_card( $feature, $description )` já estão em todo o código relevante. Quando o operador decidir ativar de verdade, é só mudar `ENFORCED` para `true` num commit e publicar.

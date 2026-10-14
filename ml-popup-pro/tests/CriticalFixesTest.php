@@ -197,4 +197,22 @@ final class CriticalFixesTest extends TestCase {
 		$this->assertContains( $urls[0], $urls ); // primary
 		$this->assertContains( 'https://mirror.example.com/ml-popup-pro-v1.5.4.zip?token=abc', $urls );
 	}
+
+	// ─── 1.5.7 — só o ZIP da própria versão ────────────────────────
+
+	public function test_find_zip_asset_accepts_only_same_version(): void {
+		$ref    = new ReflectionClass( 'MLPP_Updater' );
+		$method = $ref->getMethod( 'find_zip_asset' );
+		$method->setAccessible( true );
+		$u = new MLPP_Updater();
+
+		$other = [ 'assets' => [ [ 'name' => 'ml-popup-pro-v1.5.6.zip', 'browser_download_url' => 'https://x/old.zip' ] ] ];
+		$this->assertSame( '', $method->invoke( $u, $other, '1.5.7' ), 'Nao pode aceitar ZIP de outra versao.' );
+
+		$ok = [ 'assets' => [
+			[ 'name' => 'source.zip', 'browser_download_url' => 'https://x/source.zip' ],
+			[ 'name' => 'ml-popup-pro-v1.5.7.zip', 'browser_download_url' => 'https://x/ok.zip' ],
+		] ];
+		$this->assertSame( 'https://x/ok.zip', $method->invoke( $u, $ok, '1.5.7' ) );
+	}
 }

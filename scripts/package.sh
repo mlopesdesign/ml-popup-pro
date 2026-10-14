@@ -30,7 +30,7 @@ rm -f "$zip_path"
 
 # Build ZIP with ml-popup-pro/ as root, excluding junk
 (cd "$ROOT" && zip -r "$zip_path" ml-popup-pro \
-  -x "*.git/*" "*.DS_Store" "*Thumbs.db" "*Desktop.ini" \
+  -x "*.git/*" "*/.github/*" "ml-popup-pro/tests/*" "ml-popup-pro/composer.json" "ml-popup-pro/composer.lock" "ml-popup-pro/phpunit.xml.dist" "*/.phpunit*" "*.DS_Store" "*Thumbs.db" "*Desktop.ini" \
      "*.log" "*.swp" "*.swo" "*/node_modules/*" "*/vendor/*" \
      "*.zip")
 
