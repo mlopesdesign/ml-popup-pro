@@ -18,10 +18,17 @@ final class MLPP_Templates {
 		];
 
 		// Pro-only seasonal / specialty templates. They appear in the picker
-		// only when a Pro license is active. Without Pro they stay registered
-		// in the registry (so existing popup IDs keep working) but are tagged
-		// `is_pro => true` so the UI can hide or watermark them.
-		if ( function_exists( 'mlpp_is_premium' ) && mlpp_is_premium() ) {
+		// only when the seasonal-templates gate is open (default: always
+		// open, so this branch runs for everyone — when the operator
+		// flips MLPP_GATES_ENFORCED in class-mlpp-gates.php and the site
+		// is on the Free tier, the seasonal templates stop registering
+		// here). Without Pro they stay registered in the registry (so
+		// existing popup IDs keep working) but are tagged `is_pro => true`
+		// so the UI can hide or watermark them.
+		$seasonal_allowed = function_exists( 'mlpp_capability' )
+			? mlpp_capability( 'templates_seasonal' )
+			: true;
+		if ( $seasonal_allowed ) {
 			$templates['black_friday']  = $this->black_friday();
 			$templates['christmas']     = $this->christmas();
 			$templates['exit_survey']   = $this->exit_survey();

@@ -114,16 +114,18 @@ final class MLPP_Activator {
 	 * Create or repair all tables. Safe to call repeatedly.
 	 * Returns an array of human-readable notes about what was done.
 	 *
-	 * Defensive: each major step (dbDelta loop, SHOW COLUMNS probe,
-	 * ALTER TABLE repair pass, version option write) runs in its own
-	 * try/catch block. A failure in one step is logged and added to the
-	 * notes so the operator can see what went wrong without the plugin
-	 * aborting the entire site.
+	 * Defensive: each step (dbDelta loop, SHOW COLUMNS probe, ALTER TABLE
+	 * repair, option writes) is guarded with its own try/catch. A failure
+	 * in one step never aborts the rest, so a degraded host can still
+	 * land in an at-least-readable schema.
 	 */
 	public static function ensure_schema(): array {
 		global $wpdb;
 		$notes = [];
 
+		// Step 1 — wp-admin/includes/upgrade.php may be missing on sites
+		// where the wp-admin directory was relocated. Promote to throw
+		// instead of `require_once` fatal so we can record the note.
 		try {
 			$upgrade_file = ABSPATH . 'wp-admin/includes/upgrade.php';
 			if ( file_exists( $upgrade_file ) ) {
@@ -132,7 +134,7 @@ final class MLPP_Activator {
 				throw new \RuntimeException( 'wp-admin/includes/upgrade.php não encontrado em ' . $upgrade_file );
 			}
 		} catch ( \Throwable $e ) {
-			$notes[] = 'Não foi possível carregar wp-admin/includes/upgrade.php: ' . $e->getMessage();
+			$notes[] = 'upgrade.php indisponível: ' . $e->getMessage();
 			error_log( '[ml-popup-pro] upgrade.php include failed: ' . $e->getMessage() );
 			return $notes;
 		}
@@ -142,7 +144,7 @@ final class MLPP_Activator {
 			return $notes;
 		}
 
-		// 1) Create / update tables via dbDelta.
+		// Step 2 — dbDelta for each declared table.
 		foreach ( self::schema() as $sql ) {
 			try {
 				dbDelta( $sql );
@@ -152,16 +154,15 @@ final class MLPP_Activator {
 			}
 		}
 
-		// 2) Safety net for any column dbDelta skipped.
+		// Step 3 — safety-net column repair.
 		$table    = $wpdb->prefix . 'mlpp_popups';
 		$existing = [];
 		try {
 			$cols = $wpdb->get_col( "SHOW COLUMNS FROM {$table}", 0 );
 			$existing = is_array( $cols ) ? array_map( 'strval', $cols ) : [];
 		} catch ( \Throwable $e ) {
-			$notes[] = 'SHOW COLUMNS bloqueado pelo servidor: ' . $e->getMessage();
+			$notes[] = 'SHOW COLUMNS bloqueado: ' . $e->getMessage();
 			error_log( '[ml-popup-pro] SHOW COLUMNS failed: ' . $e->getMessage() );
-			// Continue: an empty $existing will simply try every ALTER below.
 		}
 
 		foreach ( self::popup_columns() as $name => $ddl ) {
@@ -183,11 +184,11 @@ final class MLPP_Activator {
 			}
 		}
 
-		// 3) Stamp the DB version so we don't re-run on every request.
+		// Step 4 — stamp db_version so subsequent loads skip ensure_schema.
 		try {
 			update_option( 'mlpp_db_version', self::DB_VERSION, false );
 		} catch ( \Throwable $e ) {
-			$notes[] = 'Não foi possível gravar mlpp_db_version: ' . $e->getMessage();
+			$notes[] = 'update_option(db_version) falhou: ' . $e->getMessage();
 			error_log( '[ml-popup-pro] update_option(db_version) failed: ' . $e->getMessage() );
 		}
 
@@ -199,9 +200,7 @@ final class MLPP_Activator {
 
 	public static function activate(): void {
 		$notes = self::ensure_schema();
-		// Surface what happened in activation through a transient so the
-		// admin notice / Configurações → Atualizações can show it without
-		// crashing the request.
+		// Surface diagnostic notes for the admin_notices handler.
 		if ( is_array( $notes ) ) {
 			try {
 				set_transient( 'mlpp_activation_notes', $notes, DAY_IN_SECONDS );

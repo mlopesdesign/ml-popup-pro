@@ -4,7 +4,7 @@ Tags: popup, modal, lead capture, marketing, campaign
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 8.1
-Stable tag: 1.5.2
+Stable tag: 1.5.7
 License: GPL2+
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -55,26 +55,49 @@ A verificação é feita contra a Hub local (quando presente em `ml-popup-pro/hu
 
 == Changelog ==
 
-= 1.5.2 =
-* **HOTFIX — falha crítica na ativação:** a v1.5.1 só protegia `plugins_loaded` e `get_variant_breakdown()`. O `register_activation_hook` ainda chamava `MLPP_Activator::activate()` sem try/catch. Em servidores onde `dbDelta()` ou `SHOW COLUMNS` lançam (permissão, MariaDB antigo, host com `information_schema` bloqueado), o WordPress exibia "Ocorrreu um erro crítico neste site" e impedia a ativação. Esta versão:
-  * `register_activation_hook` agora chama `MLPP_Activator::activate()` por dentro de um try/catch. Falha é capturada, salva no transient `mlpp_activation_error` e exibida como aviso no admin — plugin fica ativo em modo Free.
-  * `MLPP_Plugin::__construct()` envolve `new MLPP_Admin()` e `new MLPP_Frontend()` (e cada `init()`) em try/catch isolado. Falha em um lado não derruba o outro.
-  * `MLPP_Activator::ensure_schema()` agora isola cada passo (`require_once upgrade.php`, `dbDelta` por tabela, `SHOW COLUMNS`, cada `ALTER TABLE`, `update_option` final) em try/catch. Notas são retornadas mesmo em falha, transientes registram o que aconteceu.
-  * `MLPP_Updater` boot envolto em try/catch pra falha de rede/SSL na ativação não impedir plugin de funcionar.
-  * Novo `admin_notices` que renderiza erros deferred de ativação (botão "Reparar banco de dados" em Configurações → Atualizações continua sendo a cura).
-  * **Idempotente e safe.** Pode atualizar por cima da v1.5.0, v1.5.1 ou qualquer versão anterior sem nova instalação.
+= 1.5.7 =
+* **Atualizações pelo repositório público de releases** (`ml-popup-pro-releases`); o código-fonte passa a ser privado.
+* Motor de atualização aceita somente o ZIP da própria versão (`ml-popup-pro-v{versão}.zip`); removidos o fallback para ZIP de outra versão e a URL "adivinhada".
+* O teste de acesso ao ZIP não roda mais a cada leitura do transient e passou a usar GET de 1 byte (a URL assinada do GitHub pode recusar HEAD).
+* Ícones do plugin na tela de atualizações; ZIP de produção sem testes nem arquivos de desenvolvimento.
+* Desinstalar sempre limpa o cache do updater (os dados continuam respeitando a opção "apagar dados").
 
-= 1.5.1 =
-* **HOTFIX — site breakage na v1.5.0:** adicionados guards defensivos em todo o caminho de boot. Sintoma: em instalações onde `wp_mlpp_popups.variant_group_id`, `variant_label` ou `variant_split` ainda não existem (instalação presa em v1.0.x ou auto-migration falhou por permissão/timeout), a página Analytics quebrava com `Database Error: Unknown column 'popups.variant_group_id'`. Em alguns hosts a falha propagava para todo o site. Esta versão:
-  * `Analytics::get_variant_breakdown()` agora checa `table_has_column()` antes de rodar a query JOIN. Se a coluna não existe, retorna `[]` em vez de quebrar.
-  * `MLPP_Admin::page_analytics()` envolve a chamada em try/catch — degrada graciosamente.
-  * `plugins_loaded` callback em `ml-popup-pro.php` envolve `maybe_upgrade()` e `new MLPP_Plugin()` em try/catch. Se a auto-migration falhar, o site continua rodando e um `error_log()` é gravado. Use o botão "🛠 Reparar banco de dados" em Configurações → Atualizações para forçar migração.
-  * Novo helper privado `MLPP_Analytics::table_has_column()` com fallback `information_schema` → `SHOW COLUMNS` (cobre hosts que bloqueiam `information_schema`).
-  * Sem breaking changes para quem já estava em v1.5.0.
+= 1.5.6 =
+* **Infraestrutura Free/Pro pronta, master switch OFF:** novo `includes/class-mlpp-gates.php` com constante `MLPP_Gates::ENFORCED = false` por padrão. Helpers `mlpp_capability( $feature )` e `mlpp_render_upgrade_card( $feature, $description )` já estão em todo o código relevante. Quando o operador decidir ativar de verdade, é só mudar `ENFORCED` para `true` num commit e publicar.
+* **Features gateadas (infra ligada, mas não ativa):** A/B testing (`select_variants`), goal tracking por CSS selector (`prepare_frontend_popups` → `goal_selectors`), analytics avançado (filtros por período/popup/dispositivo + breakdown por device em `admin/views/analytics.php`), templates sazonais (`class-mlpp-templates.php::get_all()`) e webhook de conversão (`get_frontend_settings()` + frontend payload).
+* **Comportamento atual (gate OFF):** idêntico à v1.5.5. Nada muda pra Free nem Pro até o switch ser ligado.
+* **O que NÃO foi tocado:** `class-mlpp-license.php`, endpoint `https://license.mlopesdesign.com.br/api/license.php`, `verify_remote()`, `map_status()`, `activate()`, `deactivate()`. A Hub fica intocada.
+* **Tests:** novo `tests/GatesTest.php` cobre: estado default permite tudo, catálogo de features, upgrade card markup, compat com `mlpp_is_premium()` legado. Suite total: 47 testes.
+* Identidade preservada, sem features novas, safe upgrade.
 
-= 1.5.0 =
-* **🌑 Dark mode (Free):** nova seção na aba 🎨 Identidade visual com checkbox "Tema escuro". Quando ativado, o plugin enfileira `admin-dark.css` e adiciona `body.mlpp-dark` em todas as páginas admin do plugin (independente do tema global do WP). Paleta dark re-mapea as CSS variables `--ml-brand`, `--ml-ink`, `--ml-surface`, etc. afim de deixar cards, tabelas, formulários e o hero com contraste confortável.
-* **🆔 A/B analytics dashboard (Pro):** nova seção "Comparação A/B" em Analytics mostra, pra cada `variant_group_id` ativo no recorte atual, uma tabela por variante com `variant_label`, `variant_split` (peso configurado), impressões, cliques, conversões, **CTR** e **CVR**. Backend novo `Analytics::get_variant_breakdown()` faz JOIN entre `wp_mlpp_events` e `wp_mlpp_popups` agrupando por `(popup_id, variant_label)`. Sem licença ativa, mostra prompt explicativo em vez de dados vazios.
+= 1.5.5 =
+* **Bug 1 — atalhos faltando em `render_admin_nav()`:** a barra horizontal de atalhos que aparece no topo de cada página admin do plugin só listava 3 itens (Dashboard, Pop-ups, Adicionar pop-up). Templates, Analytics, **Configurações** e Histórico não tinham atalho — pra acessar esses o operador tinha que ir pelo menu lateral. Adicionados os 4 submenus faltantes na ordem em que `register_menus()` registra.
+* **Bug 2 — updater travado em "12h sem ver atualização":** `get_latest_release()` cacheava o release com TTL fixo de 6h. Quando o `url_reachable()` falhava (CDN do GitHub Releases em 504 — conhecido problema intermitente do `releases/download/`), o plugin cacheava a falha por 6h, então mesmo após o operador limpar transients manualmente, o próximo check só rolava 6h depois. Mudança: pre-flight `url_reachable()` durante a busca do release; em caso de falha, o release é cacheado com TTL curto de 5 min (`CACHE_TTL_ERROR`) em vez de 6h. Próximo "Verificar agora" pega a recuperação quase em tempo real.
+* **Bug 3 — timeout de 8s insuficiente no HEAD do CDN:** o probe `url_reachable()` usava `wp_remote_request` com timeout de 8s. O CDN do GH Releases pode demorar mais que isso em horários de pico, dando false-negative mesmo com release válido. Aumentado para 15s.
+* Sem features novas. Compat update sobre qualquer versão anterior. Idempotente.
+
+= 1.5.4 =
+* **Bug crítico 1 — frontend quebrava em sites com schema legado:** `MLPP_Rules::get_eligible_popups()` acessava `$raw_popup['rules']` direto em toda página com popup ativo. Em sites com schema `wp_mlpp_popups` da v1.0.x (sem coluna `rules`) ou com `rules` retornando `null`, o acesso gerava "Undefined array key" Warning. Em hosts com `set_error_handler` que promove Warning → Exception (várias hospedagens de revenda Magento + WP compartilhado têm isso), o request inteiro quebrava — fatal que afetava admin + frontend + AJAX. Corrigido para `$raw_popup['rules'] ?? null`. Mesmo tratamento aplicado a `$a['priority'] ?? 10` no `usort` e `$popup['rules'] ?? null` em `popup_matches()`. Cobrido por `RulesGuardTest::test_get_eligible_popups_with_no_rules_key_does_not_throw_warning`.
+* **Bug crítico 2 — AJAX público corrompido por warnings:** `MLPP_Analytics::handle_ajax_event()` agora bufferiza `ob_start()` antes de qualquer operação e descarta o buffer com `ob_clean()` antes de `wp_send_json_*`. Em hosts com `WP_DEBUG=1` ou filters de terceiros que vazam warnings, a resposta JSON vinha poluída (HTML na frente), fazia o frontend ignorar eventos silenciosamente. Agora vai JSON puro, sempre. `flush_and_die()` helper centraliza o pattern.
+* **Bug crítico 3 — updater aceitava ZIP de código-fonte:** `MLPP_Updater::candidate_zip_urls()` tinha `zipball_url` (`https://github.com/<repo>/archive/refs/tags/<tag>.zip`) como fallback do `zip_url` (asset oficial). Memória do projeto é explícita: **REJEITAR zipballs/source archives**. Em produção, se o CDN do GitHub Releases retornasse 504 no asset oficial, o plugin baixaria o zip de source com estrutura `<repo>-<version>/` (não `<plugin-slug>/`) e instalaria artefatos de debug em produção. Removido o fallback zipball. Se asset oficial não responde, `pick_working_zip_url` retorna `''` e o updater mostra "Nenhuma URL de download acessível" com retry explícito.
+* Identidade preservada; compatibilidade com v1.4.1 e v1.5.3 mantida; zero features novas.
+
+= 1.5.3 =
+* **Restauração de emergência após bug crítico na v1.5.0/v1.5.1/v1.5.2.** Versão baseada na **v1.4.1 estável** (última versão que funcionou em produção) com **apenas blindagens mínimas** — **ZERO features novas**. Cada alteração foi auditada linha por linha antes de subir.
+* **Bug crítico 1 corrigido — `MLPP_PLUGIN_BASENAME` undefined:** o hook `init` chamava `dirname( MLPP_PLUGIN_BASENAME )` em `load_plugin_textdomain`, mas a constante nunca havia sido definida. Em PHP 8.x com `WP_DEBUG=1` e `E_NOTICE`/`ErrorException`, isso virava fatal e quebrava o boot do plugin. Adicionada `define( 'MLPP_PLUGIN_BASENAME', plugin_basename( __FILE__ ) )` antes do `require_once` das classes.
+* **Bug crítico 2 corrigido — `get_recent_audit()` undefined:** `MLPP_Admin::page_audit()` chamava `self::get_recent_audit(200)` que não existia em nenhum lugar do código. Fatal quando o usuário clicava em "📜 Histórico" no menu. Implementado como método estático com try/catch que lê `wp_mlpp_audit` ordenado por `created_at DESC` e retorna `[]` em qualquer falha.
+* **Blindagens no boot (zero-features, todas em try/catch):**
+  * `register_activation_hook` agora é closure com try/catch. Falha em `MLPP_Activator::activate()` é logada e gravada em transient `mlpp_activation_error` (admin notice renderiza depois).
+  * `register_deactivation_hook` análogo.
+  * `add_action('plugins_loaded', …)` envolve `MLPP_Activator::maybe_upgrade()` e `new MLPP_Plugin()` cada um em try/catch próprio.
+  * `add_action('admin_notices', …)` renderiza `mlpp_activation_error` no topo do painel pra explicar o que aconteceu.
+  * Boot do `MLPP_Updater` envolto em try/catch (cobre falha de rede/SSL no `init()` e o `wp_remote_*`).
+  * `MLPP_Plugin::__construct()` quebra em `new MLPP_Admin()` e `new MLPP_Frontend()` (e cada `init()`) em try/catch isolado.
+  * `MLPP_Activator::ensure_schema()` quebra cada passo em try/catch: `require_once upgrade.php`, `dbDelta` por tabela, `SHOW COLUMNS`, cada `ALTER TABLE`, `update_option(db_version)`. Qualquer falha é logada e devolvida como entry no array `$notes` em vez de propagar throw.
+  * `MLPP_Admin::get_recent_audit()` (NOVO) envolve a leitura da tabela em try/catch e devolve `[]` em qualquer falha.
+* **Testes PHPUnit ampliados:** a base adiciona ActivatorGuardTest (mesmo caminho da v1.5.2, mantido porque a blindagem crítica foi mantida) + testes novos cobrindo `MLPP_Plugin::__construct()` boot isolado. Suite total = 36+ testes.
+* **Identidade preservada:** slug, classes, options, tabelas, shortcodes, AJAX, REST, frontend, admin — idênticos à v1.4.1. **Atualiza por cima de qualquer versão anterior** sem criar segunda instalação.
+* **Limitação conhecida, declaração honesta:** esta versão foi validada com `php -l` em 100% do source + PHPUnit contra stubs isolados. **Não** temos prova E2E com WordPress real rodando localmente (Docker + WP + MySQL ainda não foi montado); o user precisa subir e validar. Se quebrar, esta build pelo menos não 500a o site inteiro — degrada pra Free com aviso admin.
 
 = 1.4.1 =
 * **CI com PHPUnit:** novo job `test` em `release.yml` que roda `composer install && vendor/bin/phpunit`. O job `lint` (PHP `php -l` + Node `node --check` + sync-version) e o job de build só rodam depois de lint+test passarem. PRs contra `main` recebem o gate automaticamente antes do build.
@@ -192,14 +215,17 @@ A verificação é feita contra a Hub local (quando presente em `ml-popup-pro/hu
 
 == Upgrade Notice ==
 
-= 1.5.2 =
-* HOTFIX recomendado se a v1.5.0 ou v1.5.1 impediu a ativação no seu WP ("Ocorrreu um erro crítico neste site"). Ativação agora tem try/catch completo + admin notice com diagnóstico. Idempotente e safe.
+= 1.5.6 =
+* **RECOMENDADO preparar a base Free/Pro para quando você for ativar.** Adiciona a infraestrutura de gating em 5 features Pro com master switch OFF. O comportamento atual é idêntico à v1.5.5; quando você decidir separar Free/Premium, é só mudar `MLPP_Gates::ENFORCED` para `true` num commit. Idempotente, sem features novas, sem mudar Hub.
 
-= 1.5.1 =
-* HOTFIX recomendado se você instalou a v1.5.0 e o site quebrou: adiciona guards defensivos no boot, na query do A/B analytics e no schema check. Idempotente e safe — atualize com confiança.
+= 1.5.5 =
+* **RECOMENDADO se você usa a aba Configurações pelo atalho horizontal ou se o updater travou em "12h sem ver atualização".** Adiciona os 4 atalhos faltando no nav-bar e conserta a lógica de cache do updater para responder em minutos (não 6h) quando o CDN do GH se recupera. Idempotente, safe, sem features novas.
 
-= 1.5.0 =
-* Dark mode opcional para todas as telas administrativas (independente do tema WP) e dashboard de comparação A/B por variante (Pro) com CTR/CVR calculados. Atualize para UI completa.
+= 1.5.4 =
+* **RECOMENDADO para qualquer site que ativa ML Popup Pro com schema legado ou `WP_DEBUG=1` ligado.** Tapa 3 caminhos onde o plugin poderia matar o request inteiro em hospedagem real (warning → exception fatal). Sem features novas.
+
+= 1.5.3 =
+* **RECOMENDADO** se você está numa das versões quebradas (v1.5.0, v1.5.1 ou v1.5.2) ou se o seu WP_DEBUG está ligado. Esta versão é baseada na v1.4.1 estável + blindagens mínimas sem nenhuma feature nova. Atualize primeiro por esta; só então planeje adicionar analytics A/B novamente em versão futura com cobertura de testes E2E.
 
 = 1.4.1 =
 * CI agora roda testes PHPUnit no PR e no build (gate antes do release). README/CHANGELOG/.harness docs adicionados. Atualização opcional, sem breaking changes. Atualize quando quiser CI gates completos.

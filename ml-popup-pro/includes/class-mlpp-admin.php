@@ -71,13 +71,44 @@ final class MLPP_Admin {
 		require MLPP_PLUGIN_DIR . 'admin/views/audit.php';
 	}
 
+	/**
+	 * Read the most recent audit log rows. Returns an empty array when
+	 * the table is unavailable — never throws. Safe to call from
+	 * page_audit() during/after a partial migration.
+	 *
+	 * @return array<int, array<string, mixed>>
+	 */
+	public static function get_recent_audit( int $limit = 100 ): array {
+		try {
+			global $wpdb;
+			if ( ! isset( $wpdb ) || ! is_object( $wpdb ) ) {
+				return [];
+			}
+			$t     = $wpdb->prefix . 'mlpp_audit';
+			$limit = max( 1, min( 500, $limit ) );
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery
+			$rows  = $wpdb->get_results(
+				$wpdb->prepare( "SELECT * FROM {$t} ORDER BY created_at DESC, id DESC LIMIT %d", $limit ),
+				ARRAY_A
+			);
+			return is_array( $rows ) ? $rows : [];
+		} catch ( \Throwable $e ) {
+			error_log( '[ml-popup-pro] get_recent_audit failed: ' . $e->getMessage() );
+			return [];
+		}
+	}
+
 
 	public function render_admin_nav(): void {
 		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( (string) $_GET['page'] ) ) : 'ml-popup-pro';
 		$items = [
-			'ml-popup-pro'   => [ 'Dashboard', admin_url( 'admin.php?page=ml-popup-pro' ) ],
-			'mlpp-popups'    => [ 'Pop-ups', admin_url( 'admin.php?page=mlpp-popups' ) ],
-			'mlpp-popup-new' => [ 'Adicionar pop-up', admin_url( 'admin.php?page=mlpp-popup-new' ) ],
+			'ml-popup-pro'   => [ 'Dashboard',         admin_url( 'admin.php?page=ml-popup-pro' ) ],
+			'mlpp-popups'    => [ 'Pop-ups',           admin_url( 'admin.php?page=mlpp-popups' ) ],
+			'mlpp-popup-new' => [ 'Adicionar pop-up',  admin_url( 'admin.php?page=mlpp-popup-new' ) ],
+			'mlpp-templates' => [ 'Templates',         admin_url( 'admin.php?page=mlpp-templates' ) ],
+			'mlpp-analytics' => [ 'Analytics',         admin_url( 'admin.php?page=mlpp-analytics' ) ],
+			'mlpp-settings'  => [ 'Configurações',     admin_url( 'admin.php?page=mlpp-settings' ) ],
+			'mlpp-audit'     => [ 'Histórico',         admin_url( 'admin.php?page=mlpp-audit' ) ],
 		];
 
 		$active = $page;
@@ -132,32 +163,13 @@ final class MLPP_Admin {
 		// Do NOT call wp_enqueue_editor() here — it loads editor CSS globally
 		// and injects img{max-width:100%} which breaks the hero logo sizing.
 
-		$brand = get_option( 'mlpp_brand', [] );
-
 		wp_enqueue_style( 'mlpp-admin', MLPP_PLUGIN_URL . 'admin/assets/admin.css', [], MLPP_VERSION );
-
-		// Dark mode opt-in (user choice from Configurações > Identidade).
-		if ( ! empty( $brand['dark_mode'] ) && '1' === (string) $brand['dark_mode'] ) {
-			wp_enqueue_style( 'mlpp-admin-dark', MLPP_PLUGIN_URL . 'admin/assets/admin-dark.css', [ 'mlpp-admin' ], MLPP_VERSION );
-			add_filter( 'admin_body_class', [ self::class, 'admin_body_class_dark' ] );
-		}
-
 		wp_enqueue_script( 'mlpp-admin', MLPP_PLUGIN_URL . 'admin/assets/admin.js',
 			[ 'jquery', 'wp-color-picker', 'media-upload', 'thickbox' ], MLPP_VERSION, true );
 		wp_localize_script( 'mlpp-admin', 'mlppAdmin', [
 			'ajaxUrl' => admin_url( 'admin-ajax.php' ),
 			'nonce'   => wp_create_nonce( 'mlpp_admin_nonce' ),
 		] );
-	}
-
-	/**
-	 * Adds `data-mlpp-dark="1"` attribute via the root-level <html>
-	 * tag so the dark theme can target any selector. Body class fallback
-	 * keeps the toggle compatible with older WP versions that don't
-	 * expose the html class filter.
-	 */
-	public static function admin_body_class_dark( string $classes ): string {
-		return trim( $classes ) . ' mlpp-dark';
 	}
 
 	public function page_dashboard(): void {
@@ -213,17 +225,6 @@ final class MLPP_Admin {
 		$recent           = $this->analytics->get_recent_events( 25, $filters );
 		$best             = $this->analytics->get_best_popup( $filters );
 		$device_breakdown = $this->analytics->get_device_breakdown( $filters );
-		// Defensive: A/B breakdown is optional and depends on schema columns
-		// added in v1.3.0. If the install is frozen on an older schema or
-		// migration failed, fall back to an empty array so the page still
-		// renders.
-		$variant_breakdown = array();
-		try {
-			$variant_breakdown = $this->analytics->get_variant_breakdown( $filters );
-		} catch ( \Throwable $e ) {
-			error_log( '[ml-popup-pro] variant_breakdown failed: ' . $e->getMessage() );
-			$variant_breakdown = array();
-		}
 		$popups           = $this->storage->get_all_popups();
 		$toast            = $this->get_toast();
 		require MLPP_PLUGIN_DIR . 'admin/views/analytics.php';
@@ -275,7 +276,6 @@ final class MLPP_Admin {
 			'ml_brand'      => sanitize_hex_color( (string) ( $raw['ml_brand']      ?? '#155e6f' ) ) ?: '#155e6f',
 			'ml_brand_dark' => sanitize_hex_color( (string) ( $raw['ml_brand_dark'] ?? '#114b5a' ) ) ?: '#114b5a',
 			'ml_ink'        => sanitize_hex_color( (string) ( $raw['ml_ink']        ?? '#102a43' ) ) ?: '#102a43',
-			'dark_mode'     => isset( $raw['dark_mode'] ) ? '1' : '0',
 		];
 		update_option( 'mlpp_brand', $clean, false );
 		$this->redirect_with_toast(

@@ -108,107 +108,6 @@ final class MLPP_Analytics {
 	}
 
 	/**
-	 * Returns A/B test breakdown for popups with variant_group_id > 0.
-	 * Each variant row carries its label, weighted show rate (when
-	 * available) and event counts so the admin can compare CTR/CVR.
-	 *
-	 * Defensive: if the variant columns are missing in the DB (install
-	 * frozen on an older version, auto-migration failed, etc.) this method
-	 * returns an empty array instead of throwing. The admin view treats
-	 * the empty result as "no A/B tests yet" and stays usable.
-	 *
-	 * @return array<int, array{group_id:int,popup_id:int,popup_name:string,variant_label:string,split:int,impressions:int,clicks:int,conversions:int}>
-	 */
-	public function get_variant_breakdown( array $filters = [] ): array {
-		global $wpdb;
-		$popups_table = $wpdb->prefix . 'mlpp_popups';
-		$events_table = $this->table();
-
-		// Defensive: if either table is missing the variant columns, skip silently.
-		if ( ! $this->table_has_column( $popups_table, 'variant_group_id' ) ) {
-			return [];
-		}
-		if ( ! $this->table_has_column( $events_table, 'variant_label' ) ) {
-			return [];
-		}
-
-		[ $where, $params ] = $this->build_where( $filters );
-		// Restrict to A/B participating popups.
-		$where_extra = $where ? ' AND popups.variant_group_id > 0' : 'WHERE popups.variant_group_id > 0';
-
-		$sql = "SELECT popups.variant_group_id AS group_id,
-				popups.id AS popup_id,
-				popups.name AS popup_name,
-				events.variant_label,
-				popups.variant_split AS variant_split,
-				SUM(CASE WHEN events.event_type = 'impression' THEN 1 ELSE 0 END) AS impressions,
-				SUM(CASE WHEN events.event_type IN ('primary_click','secondary_click','image_click') THEN 1 ELSE 0 END) AS clicks,
-				SUM(CASE WHEN events.event_type = 'conversion' THEN 1 ELSE 0 END) AS conversions
-			FROM {$events_table} AS events
-			JOIN {$popups_table} AS popups ON popups.id = events.popup_id
-			{$where}{$where_extra}
-			GROUP BY events.popup_id, events.variant_label
-			ORDER BY popups.variant_group_id ASC, popups.id ASC, events.variant_label ASC";
-
-		try {
-			$rows = $params
-				? $wpdb->get_results( $wpdb->prepare( $sql, $params ), ARRAY_A )
-				: $wpdb->get_results( $sql, ARRAY_A );
-		} catch ( \Throwable $e ) {
-			error_log( '[ml-popup-pro] get_variant_breakdown failed: ' . $e->getMessage() );
-			return [];
-		}
-
-		if ( ! is_array( $rows ) ) {
-			return [];
-		}
-
-		$out = [];
-		foreach ( $rows as $r ) {
-			$out[] = [
-				'group_id'      => (int) ( $r['group_id'] ?? 0 ),
-				'popup_id'      => (int) ( $r['popup_id'] ?? 0 ),
-				'popup_name'    => (string) ( $r['popup_name'] ?? '' ),
-				'variant_label' => (string) ( $r['variant_label'] ?? '' ),
-				'split'         => (int) ( $r['variant_split'] ?? 0 ),
-				'impressions'   => (int) ( $r['impressions'] ?? 0 ),
-				'clicks'        => (int) ( $r['clicks'] ?? 0 ),
-				'conversions'   => (int) ( $r['conversions'] ?? 0 ),
-			];
-		}
-		return $out;
-	}
-
-	/**
-	 * True when the table exists and the column is present in its schema.
-	 * Used to guard analytics queries that reference newer columns
-	 * added in v1.3.0+ against installs frozen on older schema versions.
-	 */
-	private function table_has_column( string $table, string $column ): bool {
-		global $wpdb;
-		try {
-			$exists = $wpdb->get_var(
-				$wpdb->prepare(
-					"SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = %s AND table_name = %s AND column_name = %s",
-					DB_NAME,
-					$table,
-					$column
-				)
-			);
-			return (int) $exists > 0;
-		} catch ( \Throwable $e ) {
-			// information_schema may be unavailable (e.g. some managed hosts / hyperscaler);
-			// fall back to a SHOW COLUMNS probe.
-			try {
-				$cols = $wpdb->get_col( "SHOW COLUMNS FROM {$table}" );
-				return is_array( $cols ) && in_array( $column, array_map( 'strval', $cols ), true );
-			} catch ( \Throwable $e2 ) {
-				return false;
-			}
-		}
-	}
-
-	/**
 	 * Build a parameterized WHERE clause for analytics queries.
 	 *
 	 * Supported filters:
@@ -285,23 +184,55 @@ final class MLPP_Analytics {
 	}
 
 	public function handle_ajax_event(): void {
-		check_ajax_referer( 'mlpp_frontend_nonce', 'nonce' );
-		$popup_id   = absint( $_POST['popup_id'] ?? 0 );
-		$event_type = sanitize_key( $_POST['event_type'] ?? '' );
-		$page_url   = esc_url_raw( wp_unslash( $_POST['page_url'] ?? '' ) );
-		$device     = sanitize_key( $_POST['device_type'] ?? '' );
-		$valid = [ 'impression','open','close','primary_click','secondary_click','image_click','conversion' ];
-		if ( ! $popup_id || ! in_array( $event_type, $valid, true ) ) wp_send_json_error( 'invalid' );
+		// Buffer every byte that may leak before wp_send_json_* — any
+		// stray PHP Warning/Notice from a host with `WP_DEBUG=1` or a
+		// strict error handler would otherwise prepend non-JSON output
+		// and corrupt the response (frontend then sees HTML/text where
+		// it expected JSON, silently dropping events).
+		$buf = ob_start();
+		try {
+			check_ajax_referer( 'mlpp_frontend_nonce', 'nonce' );
+			$popup_id   = absint( $_POST['popup_id'] ?? 0 );
+			$event_type = sanitize_key( $_POST['event_type'] ?? '' );
+			$page_url   = esc_url_raw( wp_unslash( $_POST['page_url'] ?? '' ) );
+			$device     = sanitize_key( $_POST['device_type'] ?? '' );
+			$valid      = [ 'impression','open','close','primary_click','secondary_click','image_click','conversion' ];
 
-		// Rate limit: 1 evento do mesmo tipo por popup por IP por janela (default 5s).
-		// Impede que visitantes (ou bots) inflem a tabela de eventos em loop.
-		$window = (int) apply_filters( 'mlpp_event_rate_limit_window', 5 );
-		if ( $window > 0 && $this->is_rate_limited( $popup_id, $event_type, $window ) ) {
-			wp_send_json_error( 'rate_limited' );
+			if ( ! $popup_id || ! in_array( $event_type, $valid, true ) ) {
+				$this->flush_and_die( false, 'invalid' );
+			}
+
+			// Rate limit: 1 evento do mesmo tipo por popup por IP por janela
+			// (default 5s). Impede que visitantes (ou bots) inflem a tabela
+			// de eventos em loop.
+			$window = (int) apply_filters( 'mlpp_event_rate_limit_window', 5 );
+			if ( $window > 0 && $this->is_rate_limited( $popup_id, $event_type, $window ) ) {
+				$this->flush_and_die( false, 'rate_limited' );
+			}
+
+			$this->record( $popup_id, $event_type, $page_url, $device, (string) ( $_POST['variant_label'] ?? '' ) );
+			$this->flush_and_die( true );
+		} catch ( \Throwable $e ) {
+			// Never let a foreground exception break the AJAX contract.
+			error_log( '[ml-popup-pro] handle_ajax_event failed: ' . $e->getMessage() );
+			$this->flush_and_die( false, 'server_error' );
 		}
+	}
 
-		$this->record( $popup_id, $event_type, $page_url, $device, (string) ( $_POST['variant_label'] ?? '' ) );
-		wp_send_json_success();
+	/**
+	 * Drop any buffered output before delegating to WP's
+	 * wp_send_json_*() so the response is always a single, clean JSON
+	 * document. Keeps the handler safe against hosts where
+	 * `WP_DEBUG=1` + strict error handler emit extra bytes.
+	 */
+	private function flush_and_die( bool $ok, string $message = '' ): void {
+		if ( ob_get_level() > 0 ) {
+			ob_clean();
+		}
+		if ( $ok ) {
+			wp_send_json_success();
+		}
+		wp_send_json_error( $message );
 	}
 
 	/**

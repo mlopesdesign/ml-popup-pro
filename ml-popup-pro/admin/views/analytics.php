@@ -99,81 +99,33 @@ $device_labels = [
 		<?php endforeach; ?>
 	</div>
 
-	<!-- A/B VARIANT BREAKDOWN (Pro) -->
-	<?php if ( ! mlpp_is_premium() ) : ?>
-		<div class="mlpp-note" style="margin-bottom:16px;background:#fef3c7;color:#92400e">
-			🔑 <strong>A/B Testing analytics disponível em Pro.</strong> Crie variantes de popup (peso, label, group_id) e ative sua licença em <a href="<?php echo esc_url( admin_url( 'admin.php?page=mlpp-settings&tab=cfg-activation' ) ); ?>">Configurações → Ativação</a> para ver a breakdown por variante aqui.
-		</div>
-	<?php elseif ( empty( $variant_breakdown ) ) : ?>
-		<div class="mlpp-note" style="margin-bottom:16px">
-			Nenhum teste A/B ativo no recorte atual. Crie 2+ popups com o mesmo <code>variant_group_id</code> na aba <strong>Gatilhos</strong> da popup-edit para começar.
-		</div>
-	<?php else : ?>
-		<section class="mlpp-card" style="margin-top:16px">
-			<div class="mlpp-card-header"><div><h2>🆔 Comparação A/B</h2><p class="mlpp-hero-intro">CTR e conversão por variante dentro do recorte atual.</p></div></div>
-			<?php
-			// Group variants by group_id (one test)
-			$by_group = [];
-			foreach ( $variant_breakdown as $r ) {
-				$by_group[ $r['group_id'] ][] = $r;
-			}
-			foreach ( $by_group as $gid => $variants ) :
-				?>
-				<h3 style="margin-top:14px;margin-bottom:6px;font-size:14px">Teste #<?php echo (int) $gid; ?></h3>
-				<table class="widefat fixed striped" style="border-radius:14px;overflow:hidden;font-size:13px;">
-					<thead>
-						<tr>
-							<th>Variante</th>
-							<th>Peso configurado</th>
-							<th>Impressões</th>
-							<th>Cliques</th>
-							<th>Conversões</th>
-							<th>CTR</th>
-							<th>CVR</th>
-						</tr>
-					</thead>
-					<tbody>
-					<?php foreach ( $variants as $v ) :
-						$imp   = max( 1, (int) $v['impressions'] );
-						$ctr   = round( (int) $v['clicks'] / $imp * 100, 2 );
-						$cvr   = round( (int) $v['conversions'] / $imp * 100, 2 );
-					?>
-						<tr>
-							<td>
-								<strong><?php echo esc_html( $v['variant_label'] ?: '(sem label)' ); ?></strong>
-								<small style="display:block;color:var(--ml-muted)">#<?php echo (int) $v['popup_id']; ?> · <?php echo esc_html( $v['popup_name'] ); ?></small>
-							</td>
-							<td><?php echo (int) $v['split']; ?>%</td>
-							<td><?php echo number_format_i18n( (int) $v['impressions'] ); ?></td>
-							<td><?php echo number_format_i18n( (int) $v['clicks'] ); ?></td>
-							<td><?php echo number_format_i18n( (int) $v['conversions'] ); ?></td>
-							<td><?php echo esc_html( $ctr ); ?>%</td>
-							<td><?php echo esc_html( $cvr ); ?>%</td>
-						</tr>
-					<?php endforeach; ?>
-					</tbody>
-				</table>
-			<?php endforeach; ?>
-		</section>
-	<?php endif; ?>
-
 	<!-- BREAKDOWN POR DISPOSITIVO -->
 	<section class="mlpp-card" style="margin-top:16px">
 		<div class="mlpp-card-header"><div><h2>Por dispositivo</h2><p class="mlpp-hero-intro">Distribuição de eventos no recorte atual.</p></div></div>
-		<div class="mlpp-stat-grid" style="grid-template-columns:repeat(3,1fr)">
+		<?php if ( function_exists( 'mlpp_capability' ) && mlpp_capability( 'analytics_advanced' ) ) : ?>
+			<div class="mlpp-stat-grid" style="grid-template-columns:repeat(3,1fr)">
+				<?php
+				$device_total = max( 1, array_sum( $device_breakdown ) );
+				foreach ( $device_labels as $dv_key => $dv_label ) :
+					$count = (int) ( $device_breakdown[ $dv_key ] ?? 0 );
+					$pct   = round( $count / $device_total * 100, 1 );
+				?>
+					<article class="mlpp-stat-card">
+						<span class="mlpp-stat-label"><?php echo esc_html( $dv_label ); ?></span>
+						<strong><?php echo esc_html( number_format_i18n( $count ) ); ?></strong>
+						<small><?php echo esc_html( $pct ); ?>% do recorte</small>
+					</article>
+				<?php endforeach; ?>
+			</div>
+		<?php else : ?>
 			<?php
-			$device_total = max( 1, array_sum( $device_breakdown ) );
-			foreach ( $device_labels as $dv_key => $dv_label ) :
-				$count = (int) ( $device_breakdown[ $dv_key ] ?? 0 );
-				$pct   = round( $count / $device_total * 100, 1 );
+			if ( function_exists( 'mlpp_render_upgrade_card' ) ) {
+				mlpp_render_upgrade_card( 'analytics_advanced', 'Filtros por período/popup/dispositivo e a distribuição de eventos por dispositivo exigem o plano Pro. Ative seu serial em Configurações > 🔑 Ativação para liberar.' );
+			} else {
+				echo '<p>Requer plano Pro.</p>';
+			}
 			?>
-				<article class="mlpp-stat-card">
-					<span class="mlpp-stat-label"><?php echo esc_html( $dv_label ); ?></span>
-					<strong><?php echo esc_html( number_format_i18n( $count ) ); ?></strong>
-					<small><?php echo esc_html( $pct ); ?>% do recorte</small>
-				</article>
-			<?php endforeach; ?>
-		</div>
+		<?php endif; ?>
 	</section>
 
 	<!-- MELHOR POPUP + ATIVIDADE RECENTE -->

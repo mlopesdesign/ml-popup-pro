@@ -2,6 +2,17 @@
 
 Todas as mudanças notáveis neste projeto estão documentadas aqui. O formato segue o [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), e o projeto tenta seguir [Semantic Versioning](https://semver.org/).
 
+## [1.5.7] — Ponte para o repositório público de releases
+
+### Alterado
+- Updater consulta `ml-popup-pro-releases` (público, só ZIPs); `Update URI` atualizado. Código-fonte será privado.
+- `find_zip_asset` aceita somente `ml-popup-pro-v{versão}.zip` / `ml-popup-pro-{versão}.zip` da própria release; removidos o fallback por regex (outra versão) e a URL determinística.
+- Acesso ao ZIP testado só ao buscar a release (resultado em cache), não a cada leitura do transient.
+- Ícones no transient e no `plugins_api`.
+- `scripts/package.sh` exclui `tests/`, `composer.json`, `phpunit.xml.dist` do ZIP de produção.
+- `uninstall.php` sempre limpa o cache do updater.
+- Workflow publica também em `ml-popup-pro-releases` quando houver `GH_RELEASE_TOKEN`.
+
 ## [1.4.0] — LGPD + Exit-Intent Mobile + Audit Log + i18n + Tests
 
 ### Adicionado

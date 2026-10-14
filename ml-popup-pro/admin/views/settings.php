@@ -159,7 +159,7 @@ function mlpp_schk( array $settings, string $key ): string {
 				</div>
 
 				<div class="mlpp-note" style="margin-bottom:16px">
-					Repositório: <a href="https://github.com/mlopesdesign/ml-popup-pro/releases" target="_blank" rel="noopener">github.com/mlopesdesign/ml-popup-pro/releases</a><br>
+					Repositório: <a href="https://github.com/mlopesdesign/ml-popup-pro-releases/releases" target="_blank" rel="noopener">github.com/mlopesdesign/ml-popup-pro-releases/releases</a><br>
 					Cache: 6 horas — transient <code>mlpp_github_update_cache</code>
 				</div>
 
@@ -182,7 +182,7 @@ function mlpp_schk( array $settings, string $key ): string {
 			<article class="mlpp-card">
 				<div class="mlpp-card-head"><div><h2>Como funciona</h2></div></div>
 				<ul style="margin:0;padding-left:18px;font-size:13px;line-height:1.8;color:var(--ml-ink)">
-					<li>Consulta <code>api.github.com/repos/mlopesdesign/ml-popup-pro/releases/latest</code></li>
+					<li>Consulta <code>api.github.com/repos/mlopesdesign/ml-popup-pro-releases/releases/latest</code></li>
 					<li>Compara a tag do release com a versão instalada</li>
 					<li>Se houver versão nova, injeta no transient <code>update_plugins</code> do WordPress</li>
 					<li>O WordPress exibe a atualização em Painel → Atualizações</li>
@@ -243,16 +243,6 @@ function mlpp_schk( array $settings, string $key ): string {
 				<p class="description">Esses valores viram CSS variables (<code>:root { --ml-brand: … }</code>) no cabeçalho das telas do plugin e persistem até você trocar novamente.</p>
 				<div class="mlpp-actions" style="margin-top:14px">
 					<button type="submit" class="button button-primary mlpp-btn">Salvar cores</button>
-				</div>
-			</article>
-
-			<article class="mlpp-card" style="margin-top:14px">
-				<div class="mlpp-card-header"><div><h2>🌓 Tema escuro</h2><p class="mlpp-hero-intro">Aplica paleta dark em todas as telas administrativas do plugin. Independente do tema do WP.</p></div></div>
-				<div class="mlpp-field">
-					<label>
-						<input type="checkbox" name="mlpp_brand[dark_mode]" value="1" <?php checked( (string) ( $brand['dark_mode'] ?? '0' ), '1' ); ?>>
-						Ativar tema escuro para todas as telas do plugin
-					</label>
 				</div>
 			</article>
 		</form>

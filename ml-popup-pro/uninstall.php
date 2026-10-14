@@ -7,6 +7,10 @@ if ( ! defined( 'WP_UNINSTALL_PLUGIN' ) ) {
 $settings = get_option( 'mlpp_settings', array() );
 $delete   = is_array( $settings ) ? ( $settings['delete_data_on_uninstall'] ?? '0' ) : '0';
 
+// Cache do updater e descartavel: limpa sempre.
+delete_site_transient( 'mlpp_github_update_cache' );
+delete_site_option( 'mlpp_github_update_last_error' );
+
 if ( '1' !== $delete ) {
 	return;
 }

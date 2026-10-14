@@ -2,9 +2,9 @@
 /**
  * Plugin Name: ML Popup Pro
  * Plugin URI: https://mlopesdesign.com.br
- * Update URI: https://github.com/mlopesdesign/ml-popup-pro
+ * Update URI: https://github.com/mlopesdesign/ml-popup-pro-releases
  * Description: Gerenciador premium de popups para WordPress. Campanhas, regras de exibição, agendamento, templates, analytics e shortcodes com identidade visual ML.
- * Version: 1.5.2
+ * Version: 1.5.7
  * Requires at least: 6.0
  * Requires PHP: 8.1
  * Author: ML Lopes Design
@@ -17,10 +17,16 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'MLPP_VERSION', '1.5.2' );
+define( 'MLPP_VERSION', '1.5.7' );
 define( 'MLPP_PLUGIN_FILE', __FILE__ );
 define( 'MLPP_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'MLPP_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
+// Derived basename — used by load_plugin_textdomain(). Defining it here
+// removes a "Use of undefined constant MLPP_PLUGIN_BASENAME" fatal that
+// triggers under WP_DEBUG=1 / E_NOTICE promotion in PHP 8.x.
+if ( ! defined( 'MLPP_PLUGIN_BASENAME' ) ) {
+	define( 'MLPP_PLUGIN_BASENAME', plugin_basename( __FILE__ ) );
+}
 
 require_once MLPP_PLUGIN_DIR . 'includes/class-mlpp-activator.php';
 require_once MLPP_PLUGIN_DIR . 'includes/class-mlpp-security.php';
@@ -30,14 +36,13 @@ require_once MLPP_PLUGIN_DIR . 'includes/class-mlpp-analytics.php';
 require_once MLPP_PLUGIN_DIR . 'includes/class-mlpp-rules.php';
 require_once MLPP_PLUGIN_DIR . 'includes/class-mlpp-templates.php';
 require_once MLPP_PLUGIN_DIR . 'includes/class-mlpp-updater.php';
+require_once MLPP_PLUGIN_DIR . 'includes/class-mlpp-gates.php';
 require_once MLPP_PLUGIN_DIR . 'includes/class-mlpp-admin.php';
 require_once MLPP_PLUGIN_DIR . 'includes/class-mlpp-frontend.php';
 require_once MLPP_PLUGIN_DIR . 'includes/class-mlpp-plugin.php';
 
-// Activation hook wrapped in try/catch so a failed schema migration never
-// produces the WordPress "critical error" recovery screen. If anything
-// throws inside activate(), we log it, drop a transient for the admin
-// notice, and still leave the plugin in a usable (Free) state.
+// Activation wrapped in try/catch — a failed schema migration must never
+// bubble up as a "critical error" recovery screen.
 register_activation_hook( __FILE__, function () {
 	try {
 		MLPP_Activator::activate();
@@ -54,22 +59,20 @@ register_deactivation_hook( __FILE__, function () {
 	}
 } );
 
-// Boot updater immediately while the plugin file is loaded, before WordPress builds update transients.
+// Boot updater inside try/catch — failure must not break plugin load.
 try {
 	$GLOBALS['mlpp_updater'] = new MLPP_Updater();
 	$GLOBALS['mlpp_updater']->init();
 } catch ( \Throwable $e ) {
 	error_log( '[ml-popup-pro] updater init failed: ' . $e->getMessage() );
+	$GLOBALS['mlpp_updater'] = null;
 }
 
 add_action( 'plugins_loaded', function () {
 	static $instance = null;
 	if ( $instance === null ) {
-		// Defensive boot: schema migration and Plugin construction are
-		// wrapped so a failed auto-migration on a stale install never
-		// 500s the whole site. Worst case the plugin runs Free with the
-		// last-known-good schema and surfaces an admin notice to retry
-		// the repair from Configurações > Atualizações.
+		// Schema migration + plugin construction wrapped — a stale install
+		// with a partially-broken schema must not 500 the site.
 		try {
 			MLPP_Activator::maybe_upgrade();
 		} catch ( \Throwable $e ) {
@@ -84,11 +87,8 @@ add_action( 'plugins_loaded', function () {
 	}
 } );
 
-/**
- * Surface deferred activation / boot errors to the admin.
- * Reads transients set by the wrapped activation hook and the boot
- * sequence. Auto-dismisses once the user clicks "Reparar banco".
- */
+// Render the deferred activation error (if any) as an admin notice so the
+// operator knows the plugin was forced into Free mode and why.
 add_action( 'admin_notices', function () {
 	if ( ! current_user_can( 'manage_options' ) ) {
 		return;

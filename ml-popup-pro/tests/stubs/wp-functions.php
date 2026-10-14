@@ -207,6 +207,13 @@ if ( ! function_exists( 'wp_verify_nonce' ) ) {
 if ( ! function_exists( 'wp_create_nonce' ) ) {
 	function wp_create_nonce( $action ) { return 'test-nonce'; }
 }
+if ( ! function_exists( 'check_ajax_referer' ) ) {
+	function check_ajax_referer( $action = -1, $query_arg = false, $die = true ) {
+		// Always succeed in tests. Real WP would compare the nonce field
+		// against the stored value and wp_die() on mismatch.
+		return true;
+	}
+}
 
 if ( ! function_exists( 'wp_kses_post' ) ) {
 	function wp_kses_post( $data ) { return (string) $data; }
@@ -221,6 +228,11 @@ if ( ! function_exists( 'wp_generate_password' ) ) {
 if ( ! function_exists( 'home_url' ) ) {
 	function home_url( $path = '/' ) {
 		return 'http://example.test' . $path;
+	}
+}
+if ( ! function_exists( 'admin_url' ) ) {
+	function admin_url( $path = '/', $scheme = 'admin' ) {
+		return 'http://example.test/wp-admin/' . ltrim( $path, '/' );
 	}
 }
 
@@ -262,9 +274,37 @@ if ( ! function_exists( 'current_time' ) ) {
 	}
 }
 
-// Admin notice rendering helpers used by the deferred-error admin_notices
-// hook. The test runner never echoes admin markup, but the closures
-// reference these functions to assemble strings.
-if ( ! function_exists( 'esc_html' ) ) {
-	// Defined earlier in this file, but check again for completeness.
+// Filter / action stubs. apply_filters returns the 2nd argument
+// unless a registered callback registered for that hook transforms it
+// via the in-memory store.
+if ( ! function_exists( 'apply_filters' ) ) {
+	function apply_filters( $hook, $value, ...$args ) {
+		$cb = $GLOBALS['__mlpp_filter_callbacks'][ $hook ] ?? [];
+		foreach ( $cb as $fn ) {
+			if ( is_callable( $fn ) ) {
+				$value = $fn( $value, ...$args );
+			}
+		}
+		return $value;
+	}
+}
+if ( ! function_exists( 'add_filter' ) ) {
+	function add_filter( $hook, $callback, $priority = 10, $accepted_args = 1 ) {
+		$GLOBALS['__mlpp_filter_callbacks'][ $hook ][] = $callback;
+		return true;
+	}
+}
+if ( ! function_exists( 'remove_filter' ) ) {
+	function remove_filter( $hook, $callback = '', $priority = 10 ) {
+		if ( '' === $callback || empty( $GLOBALS['__mlpp_filter_callbacks'][ $hook ] ) ) {
+			unset( $GLOBALS['__mlpp_filter_callbacks'][ $hook ] );
+			return true;
+		}
+		$list = &$GLOBALS['__mlpp_filter_callbacks'][ $hook ];
+		foreach ( $list as $i => $fn ) {
+			if ( $fn === $callback ) { unset( $list[ $i ] ); }
+		}
+		$GLOBALS['__mlpp_filter_callbacks'][ $hook ] = array_values( $list );
+		return true;
+	}
 }
