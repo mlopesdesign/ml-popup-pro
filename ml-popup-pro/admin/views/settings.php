@@ -159,7 +159,7 @@ function mlpp_schk( array $settings, string $key ): string {
 				</div>
 
 				<div class="mlpp-note" style="margin-bottom:16px">
-					Repositório: <a href="https://github.com/mlopesdesign/ml-popup-pro/releases" target="_blank" rel="noopener">github.com/mlopesdesign/ml-popup-pro/releases</a><br>
+					Repositório: <a href="https://github.com/mlopesdesign/ml-popup-pro-releases/releases" target="_blank" rel="noopener">github.com/mlopesdesign/ml-popup-pro-releases/releases</a><br>
 					Cache: 6 horas — transient <code>mlpp_github_update_cache</code>
 				</div>
 
@@ -182,7 +182,7 @@ function mlpp_schk( array $settings, string $key ): string {
 			<article class="mlpp-card">
 				<div class="mlpp-card-head"><div><h2>Como funciona</h2></div></div>
 				<ul style="margin:0;padding-left:18px;font-size:13px;line-height:1.8;color:var(--ml-ink)">
-					<li>Consulta <code>api.github.com/repos/mlopesdesign/ml-popup-pro/releases/latest</code></li>
+					<li>Consulta <code>api.github.com/repos/mlopesdesign/ml-popup-pro-releases/releases/latest</code></li>
 					<li>Compara a tag do release com a versão instalada</li>
 					<li>Se houver versão nova, injeta no transient <code>update_plugins</code> do WordPress</li>
 					<li>O WordPress exibe a atualização em Painel → Atualizações</li>

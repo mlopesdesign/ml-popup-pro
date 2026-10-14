@@ -58,7 +58,7 @@ A verificação é feita contra a Hub local (quando presente em `ml-popup-pro/hu
 = 1.5.7 =
 * **Atualizações pelo repositório público de releases** (`ml-popup-pro-releases`); o código-fonte passa a ser privado.
 * Motor de atualização aceita somente o ZIP da própria versão (`ml-popup-pro-v{versão}.zip`); removidos o fallback para ZIP de outra versão e a URL "adivinhada".
-* O teste de acesso ao ZIP não roda mais a cada leitura do transient (economiza uma chamada ao GitHub por página do admin).
+* O teste de acesso ao ZIP não roda mais a cada leitura do transient e passou a usar GET de 1 byte (a URL assinada do GitHub pode recusar HEAD).
 * Ícones do plugin na tela de atualizações; ZIP de produção sem testes nem arquivos de desenvolvimento.
 * Desinstalar sempre limpa o cache do updater (os dados continuam respeitando a opção "apagar dados").
 

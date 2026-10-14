@@ -322,8 +322,12 @@ final class MLPP_Updater {
 			return $cache[ $url ];
 		}
 
+		// GET de 1 byte (Range) em vez de HEAD: a URL assinada para onde o GitHub redireciona o
+		// download pode recusar HEAD (401/403) mesmo com o arquivo disponivel.
 		$response = wp_remote_request( $url, [
-			'method'      => 'HEAD',
+			'method'      => 'GET',
+			'headers'     => [ 'Range' => 'bytes=0-0' ],
+			'limit_response_size' => 1024,
 			'timeout'     => 15,
 			'redirection' => 5,
 			'user-agent'  => 'ML-Popup-Pro-Updater/' . MLPP_VERSION . ' WordPress/' . get_bloginfo( 'version' ),
