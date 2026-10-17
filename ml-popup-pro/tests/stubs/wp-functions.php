@@ -179,7 +179,14 @@ if ( ! class_exists( 'WP_Error' ) ) {
 			if ( $data )    { $this->error_data[$code] = $data; }
 		}
 		public function get_error_message( $code = '' ) {
-			return '';
+			if ( '' === $code ) {
+				$code = $this->get_error_code();
+			}
+			return (string) ( $this->errors[ $code ][0] ?? '' );
+		}
+		public function get_error_code() {
+			$codes = array_keys( $this->errors );
+			return $codes[0] ?? '';
 		}
 	}
 }
@@ -306,5 +313,88 @@ if ( ! function_exists( 'remove_filter' ) ) {
 		}
 		$GLOBALS['__mlpp_filter_callbacks'][ $hook ] = array_values( $list );
 		return true;
+	}
+}
+
+// ---- 1.6.0: stubs usados pelo cliente do ML License Hub e pela trava do painel ----
+
+if ( ! function_exists( 'untrailingslashit' ) ) {
+	function untrailingslashit( $value ) {
+		return rtrim( (string) $value, '/\\' );
+	}
+}
+if ( ! function_exists( 'add_action' ) ) {
+	function add_action( $hook, $callback, $priority = 10, $accepted_args = 1 ) {
+		$GLOBALS['__mlpp_actions'][ $hook ][] = $callback;
+		return true;
+	}
+}
+if ( ! function_exists( 'wp_next_scheduled' ) ) {
+	function wp_next_scheduled( $hook ) {
+		return $GLOBALS['__mlpp_cron'][ $hook ] ?? false;
+	}
+}
+if ( ! function_exists( 'wp_schedule_event' ) ) {
+	function wp_schedule_event( $timestamp, $recurrence, $hook ) {
+		$GLOBALS['__mlpp_cron'][ $hook ] = $timestamp;
+		return true;
+	}
+}
+if ( ! function_exists( 'wp_parse_url' ) ) {
+	function wp_parse_url( $url, $component = -1 ) {
+		return parse_url( (string) $url, $component );
+	}
+}
+if ( ! function_exists( 'wp_doing_ajax' ) ) {
+	function wp_doing_ajax() {
+		return ! empty( $GLOBALS['__mlpp_doing_ajax'] );
+	}
+}
+if ( ! function_exists( 'wp_date' ) ) {
+	function wp_date( $format, $timestamp = null ) {
+		return gmdate( $format, $timestamp ?? time() );
+	}
+}
+if ( ! function_exists( 'check_admin_referer' ) ) {
+	function check_admin_referer( $action = -1, $query_arg = '_wpnonce' ) {
+		return 1;
+	}
+}
+if ( ! function_exists( 'add_query_arg' ) ) {
+	function add_query_arg( $args, $url = '' ) {
+		$sep = false === strpos( (string) $url, '?' ) ? '?' : '&';
+		return $url . $sep . http_build_query( (array) $args );
+	}
+}
+if ( ! class_exists( 'MLPP_Test_Redirect' ) ) {
+	/** Lançada pelo stub de wp_safe_redirect para o teste conferir o destino sem sair do processo. */
+	class MLPP_Test_Redirect extends \RuntimeException {
+		public string $url;
+		public function __construct( string $url ) {
+			parent::__construct( 'redirect: ' . $url );
+			$this->url = $url;
+		}
+	}
+}
+if ( ! function_exists( 'wp_safe_redirect' ) ) {
+	function wp_safe_redirect( $location, $status = 302 ) {
+		throw new MLPP_Test_Redirect( (string) $location );
+	}
+}
+if ( ! function_exists( 'wp_remote_post' ) ) {
+	/** Sem rede nos testes: registra a chamada e responde "offline". */
+	function wp_remote_post( $url, $args = [] ) {
+		$GLOBALS['__mlpp_http'][] = [ 'url' => (string) $url, 'args' => $args ];
+		return new WP_Error( 'http_request_failed', 'offline (testes)' );
+	}
+}
+if ( ! function_exists( 'wp_remote_retrieve_body' ) ) {
+	function wp_remote_retrieve_body( $response ) {
+		return is_array( $response ) ? (string) ( $response['body'] ?? '' ) : '';
+	}
+}
+if ( ! function_exists( 'wp_remote_retrieve_response_code' ) ) {
+	function wp_remote_retrieve_response_code( $response ) {
+		return is_array( $response ) ? (int) ( $response['response']['code'] ?? 0 ) : 0;
 	}
 }

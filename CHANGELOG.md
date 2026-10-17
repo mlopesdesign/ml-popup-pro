@@ -2,6 +2,23 @@
 
 Todas as mudanças notáveis neste projeto estão documentadas aqui. O formato segue o [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), e o projeto tenta seguir [Semantic Versioning](https://semver.org/).
 
+## [1.6.0] — Licença pelo ML License Hub (tools.mlopesdesign.com.br)
+
+### Alterado
+- `MLPP_License` agora usa o cliente `ML_License_Client_V2` (`includes/class-ml-license-client.php`, cópia sem alterações) com o produto `ml-popup-pro` no site tools.mlopesdesign.com.br. Token assinado (Ed25519), renovação diária por cron, até 7 dias sem internet.
+- O servidor antigo (`license.mlopesdesign.com.br/api/license.php`) não é mais chamado; removidos `verify_remote()`, `map_status()`, a constante `MLPP_LICENSE_SERVER`/`MLPP_LICENSE_KEY` e os filtros `mlpp_license_server`/`mlpp_license_product_id`. As options antigas ficam no banco.
+- Aba "🔑 Licença" nas Configurações: situação, plano, validade, ativar chave, teste grátis de 30 dias, conferir agora, remover deste site, Comprar licença / Minha conta e quadro "Como funciona".
+
+### Adicionado
+- Auto-teste: na primeira visita ao painel (`admin_init`, `manage_options`, option `mlpp_auto_trial_tried`) o teste grátis começa sozinho.
+- Sem teste/licença: `MLPP_License::guard_write()` bloqueia salvar/apagar popup, salvar configurações e identidade, importar e zerar estatísticas (AJAX). Front-end, shortcodes, registro de eventos, exportar e reparar banco continuam. Aviso discreto nas telas do plugin com link para a aba Licença.
+- `?tab=` abre a aba correspondente nas Configurações.
+- `uninstall.php` desagenda `mllc_ml_popup_pro_refresh` (a licença local fica).
+
+### Corrigido
+- `MLPP_Admin::record_audit()` não existia: salvar/excluir popup dava erro fatal depois de gravar. Implementado (grava em `wp_mlpp_audit`, nunca lança exceção).
+- `admin/views/settings.php`: helpers `mlpp_sval/ssel/schk` protegidos com `function_exists`.
+
 ## [1.5.7] — Ponte para o repositório público de releases
 
 ### Alterado

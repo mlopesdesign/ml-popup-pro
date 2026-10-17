@@ -4,7 +4,7 @@ Tags: popup, modal, lead capture, marketing, campaign
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 8.1
-Stable tag: 1.5.7
+Stable tag: 1.6.0
 License: GPL2+
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -28,24 +28,21 @@ Funcionalidades principais:
 * Import/Export: JSON
 * Segurança: nonces, sanitização, escaping, $wpdb->prepare, manage_options
 
-== Free vs Pro ==
+== Licença ==
 
-O plugin funciona em modo Free sem necessidade de licença. Ativando uma licença Pro libera:
+A licença é emitida pelo site tools.mlopesdesign.com.br.
 
-* A/B testing por popup com split de tráfego e analytics por variante
-* Goal tracking automático por CSS selector (conversão por clique em elemento)
-* Filtros avançados de Analytics (período, popup, dispositivo)
-* Templates sazonais: Black Friday, Natal, Exit Survey, Free Shipping Bar
-* Identidade visual customizada (CSS variables para todas as telas admin)
-* Hooks de extensibilidade para addons e integrações
+* Teste grátis de 30 dias com tudo liberado, uma vez por site. Quem já usava o plugin recebe o teste automaticamente na primeira visita ao painel.
+* Licença anual: vale em 1 site. Para usar em outro, remova deste site.
+* Pacote Agência: uma chave para todos os plugins ML em 5, 10 ou 50 sites.
+* Com teste ou licença: o painel fica liberado por completo, incluindo os campos de A/B testing e os filtros avançados de Analytics.
+* Sem teste nem licença: os popups publicados continuam aparecendo no site e as estatísticas continuam sendo contadas. Só o painel fica bloqueado para criar, editar, apagar, importar e salvar configurações. Nada é apagado.
 
 Ativação:
 
-1. Configurações → aba 🔑 Ativação
-2. Cole seu serial Pro
-3. Clique em Ativar
-
-A verificação é feita contra a Hub local (quando presente em `ml-popup-pro/hub/`) ou aceita seriais bem-formados em modo dev para teste.
+1. Configurações → aba 🔑 Licença
+2. Cole a sua chave (ou clique em "Começar teste grátis de 30 dias")
+3. Clique em Ativar licença
 
 == Installation ==
 
@@ -54,6 +51,16 @@ A verificação é feita contra a Hub local (quando presente em `ml-popup-pro/hu
 3. Acesse ML Popup Pro no menu lateral
 
 == Changelog ==
+
+= 1.6.0 =
+* Licença pelo site tools.mlopesdesign.com.br (ML License Hub). O servidor antigo license.mlopesdesign.com.br não é mais consultado.
+* Aceita a chave do Pacote Agência (todos os plugins ML em vários sites).
+* Teste grátis de 30 dias por site. Quem já usava o plugin recebe o teste automaticamente na primeira visita ao painel.
+* Sem teste ou licença: o painel fica só para leitura (criar, editar, apagar, importar, salvar configurações e zerar estatísticas). Os popups publicados continuam aparecendo no site, as estatísticas continuam sendo contadas e nada é apagado.
+* Aba "🔑 Licença" refeita: situação, plano, validade, teste grátis, conferir, remover deste site; sem campos de servidor e Product ID.
+* Os links para a aba Licença agora abrem a aba certa nas Configurações.
+* A constante MLPP_LICENSE_KEY e a licença antiga salva no banco não liberam mais o plugin (as options antigas ficam guardadas).
+* Correção: salvar ou excluir um popup dava erro fatal depois de gravar (o registro no Histórico chamava uma função que não existia). Agora o Histórico é gravado normalmente.
 
 = 1.5.7 =
 * **Atualizações pelo repositório público de releases** (`ml-popup-pro-releases`); o código-fonte passa a ser privado.
@@ -214,6 +221,9 @@ A verificação é feita contra a Hub local (quando presente em `ml-popup-pro/hu
 * Lançamento inicial.
 
 == Upgrade Notice ==
+
+= 1.6.0 =
+* Licença passa a ser pelo site tools.mlopesdesign.com.br. Ao abrir o painel, o teste grátis de 30 dias começa sozinho; depois disso, ative a sua licença na aba 🔑 Licença. Os popups publicados nunca saem do ar por falta de licença.
 
 = 1.5.6 =
 * **RECOMENDADO preparar a base Free/Pro para quando você for ativar.** Adiciona a infraestrutura de gating em 5 features Pro com master switch OFF. O comportamento atual é idêntico à v1.5.5; quando você decidir separar Free/Premium, é só mudar `MLPP_Gates::ENFORCED` para `true` num commit. Idempotente, sem features novas, sem mudar Hub.

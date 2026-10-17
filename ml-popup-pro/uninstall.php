@@ -11,6 +11,10 @@ $delete   = is_array( $settings ) ? ( $settings['delete_data_on_uninstall'] ?? '
 delete_site_transient( 'mlpp_github_update_cache' );
 delete_site_option( 'mlpp_github_update_last_error' );
 
+// 1.6.0: licença pelo site tools — a licença local fica (reinstalar recupera); só a
+// renovação diária é desagendada.
+wp_clear_scheduled_hook( 'mllc_ml_popup_pro_refresh' );
+
 if ( '1' !== $delete ) {
 	return;
 }

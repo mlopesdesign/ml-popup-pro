@@ -85,7 +85,7 @@ $device_labels = [
 
 	<?php if ( ! mlpp_is_premium() ) : ?>
 		<div class="mlpp-note" style="margin-bottom:16px;background:#fef3c7;color:#92400e">
-			🔑 <strong>Modo Free.</strong> Filtros por período, popup e dispositivo estão disponíveis na versão Pro. Ative sua licença em <a href="<?php echo esc_url( admin_url( 'admin.php?page=mlpp-settings&tab=cfg-activation' ) ); ?>">Configurações → Ativação</a>.
+			🔑 <strong>Sem licença.</strong> Os filtros por período, popup e dispositivo ficam liberados com o teste grátis ou a licença. Ative em <a href="<?php echo esc_url( admin_url( MLPP_License::TAB_URL ) ); ?>">Configurações → Licença</a>.
 		</div>
 	<?php endif; ?>
 
@@ -120,7 +120,7 @@ $device_labels = [
 		<?php else : ?>
 			<?php
 			if ( function_exists( 'mlpp_render_upgrade_card' ) ) {
-				mlpp_render_upgrade_card( 'analytics_advanced', 'Filtros por período/popup/dispositivo e a distribuição de eventos por dispositivo exigem o plano Pro. Ative seu serial em Configurações > 🔑 Ativação para liberar.' );
+				mlpp_render_upgrade_card( 'analytics_advanced', 'Filtros por período/popup/dispositivo e a distribuição de eventos por dispositivo ficam liberados com o teste grátis ou a licença. Ative em Configurações > 🔑 Licença.' );
 			} else {
 				echo '<p>Requer plano Pro.</p>';
 			}
