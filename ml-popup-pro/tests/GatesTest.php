@@ -22,15 +22,18 @@ final class GatesTest extends TestCase {
 	 */
 	private bool $previous_enforced;
 
+	private string $prod_key = '';
+
 	protected function setUp(): void {
 		$this->previous_enforced = defined( 'MLPP_GATES_ENFORCED' ) && MLPP_GATES_ENFORCED;
-		$GLOBALS['__mlpp_license_status'] = get_option( MLPP_License::OPTION_STATUS );
-		unset( $GLOBALS['__mlpp_license_status'] );
+		$this->prod_key          = MLPP_Test_Hub::use_test_key();
+		MLPP_Test_Hub::clear();
 	}
 
 	protected function tearDown(): void {
 		// Re-emit a deterministic license state for subsequent suites.
-		update_option( MLPP_License::OPTION_STATUS, 'free' );
+		MLPP_Test_Hub::clear();
+		MLPP_Test_Hub::restore_key( $this->prod_key );
 	}
 
 	private function set_enforced( bool $on ): void {
@@ -53,8 +56,15 @@ final class GatesTest extends TestCase {
 		}
 	}
 
+	/**
+	 * 1.6.0: 'valid' = token assinado do ML License Hub (licença); 'free' = sem nada.
+	 */
 	private function set_license_status( string $status ): void {
-		update_option( MLPP_License::OPTION_STATUS, $status );
+		if ( 'valid' === $status ) {
+			MLPP_Test_Hub::store( 'license', [ 'plan' => 'annual' ], 'MLPP-ABCDE-12345' );
+		} else {
+			MLPP_Test_Hub::clear();
+		}
 	}
 
 	// ─── Default state: gates OFF (current production behavior) ──
@@ -114,7 +124,8 @@ final class GatesTest extends TestCase {
 		$this->assertStringContainsString( 'PRO', $out );
 		$this->assertStringContainsString( 'Test description.', $out );
 		$this->assertStringContainsString( 'mlpp-settings&tab=cfg-activation', $out );
-		$this->assertStringContainsString( 'license.mlopesdesign.com.br', $out );
+		$this->assertStringContainsString( 'tools.mlopesdesign.com.br/precos/', $out );
+		$this->assertStringNotContainsString( 'license.mlopesdesign.com.br', $out );
 	}
 
 	public function test_upgrade_card_with_unknown_feature_renders_nothing(): void {

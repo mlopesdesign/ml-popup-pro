@@ -65,51 +65,51 @@ final class SanitizerAndLicenseTest extends TestCase {
 		$this->assertSame( '_self', $clean['image_link_target'] );
 	}
 
-	// ---- License::map_status ----------------------------------------------
+	// ---- License (1.6.0: critério do ML License Hub) -------------------------
+	// O mapeamento de status do servidor antigo saiu junto com o servidor; os testes
+	// abaixo conferem o critério novo (token assinado do Hub), no lugar deles.
 
-	public function test_license_map_status_active_to_valid(): void {
-		$class  = new ReflectionClass( 'MLPP_License' );
-		$method = $class->getMethod( 'map_status' );
-		$method->setAccessible( true );
-		$this->assertSame( 'valid', $method->invoke( null, 'active' ) );
-	}
-
-	public function test_license_map_status_expired_passes_through(): void {
-		$class  = new ReflectionClass( 'MLPP_License' );
-		$method = $class->getMethod( 'map_status' );
-		$method->setAccessible( true );
-		$this->assertSame( 'expired', $method->invoke( null, 'expired' ) );
-	}
-
-	public function test_license_map_status_unknown_status_falls_to_invalid(): void {
-		$class  = new ReflectionClass( 'MLPP_License' );
-		$method = $class->getMethod( 'map_status' );
-		$method->setAccessible( true );
-		$this->assertSame( 'invalid', $method->invoke( null, 'weird_status' ) );
-	}
-
-	public function test_license_map_status_revoked_codes_consistently(): void {
-		$class  = new ReflectionClass( 'MLPP_License' );
-		$method = $class->getMethod( 'map_status' );
-		$method->setAccessible( true );
-		foreach ( [ 'suspended', 'cancelled', 'revoked', 'deleted' ] as $code ) {
-			$this->assertSame(
-				'revoked',
-				$method->invoke( null, $code ),
-				"$code should map to revoked"
-			);
+	public function test_license_is_premium_defaults_to_locked(): void {
+		$key = MLPP_Test_Hub::use_test_key();
+		try {
+			MLPP_Test_Hub::clear();
+			$this->assertFalse( MLPP_License::is_premium() );
+			$this->assertTrue( MLPP_License::is_locked() );
+		} finally {
+			MLPP_Test_Hub::restore_key( $key );
 		}
 	}
 
-	// ---- License::is_premium ----------------------------------------------
-
-	public function test_license_is_premium_defaults_to_free(): void {
-		$GLOBALS['__mlpp_options'][ MLPP_License::OPTION_STATUS ] = MLPP_License::STATUS_FREE;
-		$this->assertFalse( MLPP_License::is_premium() );
+	public function test_license_legacy_valid_status_is_ignored(): void {
+		$key = MLPP_Test_Hub::use_test_key();
+		try {
+			MLPP_Test_Hub::clear();
+			update_option( MLPP_License::LEGACY_OPTION_STATUS, 'valid' );
+			$this->assertFalse( MLPP_License::is_premium() );
+		} finally {
+			delete_option( MLPP_License::LEGACY_OPTION_STATUS );
+			MLPP_Test_Hub::restore_key( $key );
+		}
 	}
 
-	public function test_license_is_premium_when_status_valid(): void {
-		$GLOBALS['__mlpp_options'][ MLPP_License::OPTION_STATUS ] = MLPP_License::STATUS_VALID;
-		$this->assertTrue( MLPP_License::is_premium() );
+	public function test_license_is_premium_with_signed_hub_token(): void {
+		$key = MLPP_Test_Hub::use_test_key();
+		try {
+			MLPP_Test_Hub::store( 'license', [ 'plan' => 'annual' ], 'MLPP-ABCDE-12345' );
+			$this->assertTrue( MLPP_License::is_premium() );
+		} finally {
+			MLPP_Test_Hub::clear();
+			MLPP_Test_Hub::restore_key( $key );
+		}
+	}
+
+	public function test_license_token_checked_with_production_key_is_not_accepted_with_test_signature(): void {
+		// Sem trocar a chave: um token assinado por outra chave (a dos testes) não vale.
+		MLPP_Test_Hub::store( 'license', [ 'plan' => 'annual' ], 'MLPP-ABCDE-12345' );
+		try {
+			$this->assertFalse( MLPP_License::is_premium() );
+		} finally {
+			MLPP_Test_Hub::clear();
+		}
 	}
 }

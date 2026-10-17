@@ -90,4 +90,4 @@ wp transient delete update_plugins
 ## Ownership
 
 - **Owner:** ML Lopes Design (`mlopesdesign` no GitHub)
-- **License Hub central:** `https://license.mlopesdesign.com.br/` — produto registrado: `ml-popup-pro`
+- **License Hub central (1.6.0+):** `https://tools.mlopesdesign.com.br/` (ML License Hub, API `wp-json/mllh/v1`) — produto registrado: `ml-popup-pro`. O servidor antigo `license.mlopesdesign.com.br` não é mais usado.

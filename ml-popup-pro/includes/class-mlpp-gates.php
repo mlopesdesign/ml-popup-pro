@@ -17,15 +17,14 @@
  *   3. The Free tier now sees upgrade cards in place of the gated
  *      features; the Pro tier (with a valid serial) sees them all.
  *
- * License resolution order (matches MLPP_License::is_premium()):
- *   1. Constant `MLPP_LICENSE_KEY` defined in wp-config.php.
- *   2. Stored option `mlpp_license_status === 'valid'`.
- *   3. Otherwise: free.
+ * License resolution (1.6.0+): MLPP_License::is_premium() — teste grátis ou
+ * licença válidos no ML License Hub (tools.mlopesdesign.com.br). A constante
+ * `MLPP_LICENSE_KEY` e a option antiga `mlpp_license_status` não liberam mais.
  *
  * What this file does NOT touch:
- *   - The Hub endpoint at `https://license.mlopesdesign.com.br/...`
- *   - MLPP_License::verify_remote() / map_status() / activate() / deactivate()
- *   - Any code that talks to the license server.
+ *   - Any code that talks to the license server (see class-mlpp-license.php).
+ *   - The master switch stays OFF: front-end features keep running for everyone,
+ *     with or without license (padrão ML: o que está publicado continua).
  *
  * @package ML_Popup_Pro
  * @since   1.5.6
@@ -115,12 +114,12 @@ function mlpp_render_upgrade_card( string $feature, string $description = '' ): 
 	if ( '' === $description ) {
 		$description = sprintf(
 			/* translators: %s: feature name shown to the operator */
-			__( '“%s” está disponível no plano Pro do ML Popup Pro.', 'ml-popup-pro' ),
+			__( '“%s” fica liberado com o teste grátis ou a licença do ML Popup Pro.', 'ml-popup-pro' ),
 			$title
 		);
 	}
-	$activate_url = admin_url( 'admin.php?page=mlpp-settings&tab=cfg-activation' );
-	$hub_url      = 'https://license.mlopesdesign.com.br/admin/';
+	$activate_url = admin_url( MLPP_License::TAB_URL );
+	$hub_url      = MLPP_License::BUY_URL;
 	?>
 	<article class="mlpp-card mlpp-card-locked" data-mlpp-gate="<?php echo esc_attr( $feature ); ?>" style="border:1px dashed #f59e0b;background:#fffbeb;border-radius:14px;padding:24px;margin:18px 0;">
 		<div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
@@ -130,8 +129,8 @@ function mlpp_render_upgrade_card( string $feature, string $description = '' ): 
 				<p style="margin:0;color:#78350f;font-size:14px;line-height:1.5"><?php echo esc_html( $description ); ?></p>
 			</div>
 			<div style="display:flex;gap:10px;flex-wrap:wrap">
-				<a class="mlpp-btn" style="background:#b45309;color:#fff;padding:8px 14px;border-radius:8px;text-decoration:none;font-weight:600" href="<?php echo esc_url( $activate_url ); ?>">🔑 Ativar serial</a>
-				<a class="mlpp-btn-secondary" style="background:#fff;color:#92400e;padding:8px 14px;border-radius:8px;text-decoration:none;font-weight:600;border:1px solid #fbbf24" href="<?php echo esc_url( $hub_url ); ?>" target="_blank" rel="noopener">Saiba mais</a>
+				<a class="mlpp-btn" style="background:#b45309;color:#fff;padding:8px 14px;border-radius:8px;text-decoration:none;font-weight:600" href="<?php echo esc_url( $activate_url ); ?>">🔑 Ativar licença</a>
+				<a class="mlpp-btn-secondary" style="background:#fff;color:#92400e;padding:8px 14px;border-radius:8px;text-decoration:none;font-weight:600;border:1px solid #fbbf24" href="<?php echo esc_url( $hub_url ); ?>" target="_blank" rel="noopener">Comprar licença</a>
 			</div>
 		</div>
 	</article>

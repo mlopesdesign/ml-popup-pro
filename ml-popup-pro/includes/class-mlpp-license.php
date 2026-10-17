@@ -1,316 +1,294 @@
 <?php
 /**
- * ML Popup Pro – License / activation
+ * ML Popup Pro – Licença.
  *
- * Talks to the user's central License Hub over HTTP and exposes a
- * `mlpp_is_premium()` helper used everywhere to gate Pro features.
+ * 1.6.0: a licença passa a ser emitida e conferida pelo site tools.mlopesdesign.com.br
+ * (módulo ML License Hub, cliente ML_License_Client_V2). O servidor antigo
+ * (endpoint "license" do domínio antigo de licenças) não é mais consultado, e os campos
+ * "Servidor" e "Produto" saíram da tela.
  *
- * Endpoint contract (POST):
- *   url:    MLPP_LICENSE_SERVER (default: https://license.mlopesdesign.com.br/api/license.php)
- *   body:   action=validate_license
- *           product_id = MLPP_PRODUCT_ID (slug of this plugin)
- *           license_key = serial entered in Configurações > Ativação
- *           domain = host of the current site (HTTP_HOST, lowercased)
- *           site_url = home_url()
- *           version = current plugin version
+ * Regras do padrão ML:
+ *   - teste grátis de 30 dias por site (uma vez por site; reinstalar não reinicia);
+ *   - licença anual vale em 1 site; a chave do Pacote Agência vale em todos os plugins ML;
+ *   - quem já usava o plugin recebe o teste automaticamente na primeira visita ao painel;
+ *   - sem teste/licença válidos, só o painel do plugin trava para gravar (criar, editar,
+ *     apagar, importar, salvar configurações, zerar estatísticas). Os popups publicados
+ *     continuam aparecendo no site, as estatísticas continuam sendo registradas e nenhum
+ *     dado é apagado.
  *
- * Response (JSON):
- *   { valid: bool, status: string, message: string,
- *     plan?, domain?, expires_at?, grace_until? }
- *
- * Statuses observed in the hub:
- *   active, expired, suspended, cancelled, deleted, not_found,
- *   bad_request, invalid_action, unknown_product, domain_mismatch,
- *   not_installed.
- *
- * The plugin falls back to Free when:
- *   - no constant MLPP_LICENSE_KEY is set,
- *   - no stored option key, or
- *   - the stored key fails validation against the hub (or the hub is unreachable).
+ * As options antigas (mlpp_license_key, mlpp_license_status, mlpp_license_details,
+ * mlpp_license_cache, mlpp_product_id) ficam no banco, mas não são mais usadas: uma
+ * option antiga "valid" ou a constante MLPP_LICENSE_KEY não liberam mais o plugin.
  *
  * @package ML_Popup_Pro
  * @since   1.1.0
- * @updated 1.2.0  Hub integration via HTTP
+ * @updated 1.6.0  Licença pelo ML License Hub (tools.mlopesdesign.com.br)
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+require_once __DIR__ . '/class-ml-license-client.php';
+
 final class MLPP_License {
 
-	const STATUS_FREE      = 'free';
-	const STATUS_VALID     = 'valid';
-	const STATUS_PENDING   = 'pending';
-	const STATUS_INVALID   = 'invalid';
-	const STATUS_EXPIRED   = 'expired';
-	const STATUS_REVOKED   = 'revoked';
-	const STATUS_UNREACH   = 'unreachable';
+	const API_BASE    = 'https://tools.mlopesdesign.com.br/wp-json/mllh/v1';
+	const PUBLIC_KEY  = 'VGZQp2X3RJMuDmQBlIEXS4fqsZD1CnFlIJgfVtY/pHo=';
+	const PRODUCT_ID  = 'ml-popup-pro';
+	const BUY_URL     = 'https://tools.mlopesdesign.com.br/precos/';
+	const ACCOUNT_URL = 'https://tools.mlopesdesign.com.br/minha-conta/';
+	const AUTO_TRIAL  = 'mlpp_auto_trial_tried';
+	const TAB_URL     = 'admin.php?page=mlpp-settings&tab=cfg-activation';
 
-	const OPTION_KEY       = 'mlpp_license_key';
-	const OPTION_STATUS    = 'mlpp_license_status';
-	const OPTION_DETAILS   = 'mlpp_license_details';
-	const OPTION_CACHE     = 'mlpp_license_cache';
-	const OPTION_PRODUCT   = 'mlpp_product_id';
+	/** Options antigas (até 1.5.7). Ficam no banco; não são mais lidas para liberar o plugin. */
+	const LEGACY_OPTION_KEY     = 'mlpp_license_key';
+	const LEGACY_OPTION_STATUS  = 'mlpp_license_status';
+	const LEGACY_OPTION_DETAILS = 'mlpp_license_details';
+	const LEGACY_OPTION_CACHE   = 'mlpp_license_cache';
+	const LEGACY_OPTION_PRODUCT = 'mlpp_product_id';
 
-	const DEFAULT_SERVER   = 'https://license.mlopesdesign.com.br/api/license.php';
-	const DEFAULT_PRODUCT  = 'ml-popup-pro';
-	const CACHE_TTL        = 12 * HOUR_IN_SECONDS;
-	const API_TIMEOUT      = 15;
+	/** @var ML_License_Client_V2|null */
+	private static $client = null;
+
+	/** @var bool|null Resultado guardado durante a requisição (zera quando a licença muda). */
+	private static $locked = null;
+
+	public static function client(): ML_License_Client_V2 {
+		if ( null === self::$client ) {
+			self::$client = new ML_License_Client_V2(
+				[
+					'api_base'   => self::API_BASE,
+					'product'    => self::PRODUCT_ID,
+					'public_key' => self::PUBLIC_KEY,
+					'version'    => MLPP_VERSION,
+				]
+			);
+		}
+		return self::$client;
+	}
 
 	/**
-	 * Single source of truth for premium gating. Used in admin views and
-	 * runtime feature checks. Resolves in this order:
-	 *   1. Constant `MLPP_LICENSE_KEY` defined in wp-config.php.
-	 *   2. Stored option `mlpp_license_status === 'valid'`.
-	 *
-	 * @return bool
+	 * Único critério de liberação: teste grátis ou licença válidos neste site,
+	 * conforme o token assinado pelo ML License Hub.
 	 */
 	public static function is_premium(): bool {
-		if ( defined( 'MLPP_LICENSE_KEY' ) && '' !== (string) MLPP_LICENSE_KEY ) {
-			return true;
+		return self::client()->is_premium();
+	}
+
+	/** Painel travado para gravar (sem teste nem licença). */
+	public static function is_locked(): bool {
+		if ( null === self::$locked ) {
+			self::$locked = ! self::is_premium();
 		}
-		$status = (string) get_option( self::OPTION_STATUS, self::STATUS_FREE );
-		return self::STATUS_VALID === $status;
+		return self::$locked;
+	}
+
+	public static function forget(): void {
+		self::$locked = null;
+	}
+
+	/* ------------------------------------------------------------------ ganchos */
+
+	public static function boot(): void {
+		self::client(); // agenda a renovação diária
+		add_action( 'admin_init', [ __CLASS__, 'maybe_auto_trial' ], 5 );
+		add_action( 'admin_notices', [ __CLASS__, 'locked_notice' ] );
+		$opt = self::client()->option_name();
+		foreach ( [ 'added_option', 'updated_option', 'deleted_option' ] as $hook ) {
+			add_action(
+				$hook,
+				static function ( $name ) use ( $opt ) {
+					if ( $name === $opt ) {
+						MLPP_License::forget();
+					}
+				}
+			);
+		}
+	}
+
+	/** Primeira visita ao painel: começa o teste grátis sozinho (uma tentativa por site). */
+	public static function maybe_auto_trial(): void {
+		if ( wp_doing_ajax() || ! current_user_can( 'manage_options' ) || get_option( self::AUTO_TRIAL ) ) {
+			return;
+		}
+		update_option( self::AUTO_TRIAL, time(), false );
+		$state = self::client()->state();
+		if ( empty( $state['active'] ) && 'none' === $state['mode'] && empty( $state['trial_used'] ) ) {
+			self::client()->start_trial();
+		}
 	}
 
 	/**
-	 * Persist a serial and validate it against the hub. If the hub is
-	 * unreachable the serial is stored as 'pending' so the user can
-	 * retry; if it returns a structured error, the option reflects the
-	 * exact status (expired, invalid, etc.).
-	 *
-	 * @return array{ok:bool,status:string,message:string}
+	 * Chamado no começo das ações de gravação do painel (admin-post e AJAX).
+	 * Sem licença: não grava nada e volta para a aba Licença com o aviso.
 	 */
-	public static function activate( string $key, bool $force = false ): array {
-		$key = trim( $key );
-		if ( '' === $key ) {
-			return [
-				'ok'      => false,
-				'status'  => self::STATUS_INVALID,
-				'message' => 'Serial vazio.',
-			];
+	public static function guard_write( bool $ajax = false ): void {
+		if ( ! self::is_locked() ) {
+			return;
 		}
-
-		update_option( self::OPTION_KEY, $key, false );
-
-		$verification = self::verify_remote( $key, $force );
-		$status       = $verification['status'];
-		update_option( self::OPTION_STATUS, $status, false );
-
-		if ( self::STATUS_VALID === $status ) {
-			update_option( self::OPTION_DETAILS, $verification['details'] ?? [], false );
-			update_option( self::OPTION_CACHE, $verification, false );
-			return [
-				'ok'      => true,
-				'status'  => $status,
-				'message' => $verification['message'] ?? 'Pro ativa.',
-			];
+		$msg = self::locked_message();
+		if ( $ajax ) {
+			wp_send_json_error( [ 'message' => $msg ], 403 );
 		}
+		self::redirect_with_toast( $msg, 'error' );
+	}
 
-		// Keep the cache so the admin can inspect the precise failure mode.
-		update_option( self::OPTION_CACHE, $verification, false );
+	public static function locked_message(): string {
+		return __( 'Ative a licença (ou comece o teste grátis) para alterar o ML Popup Pro. Os popups publicados continuam aparecendo no site.', 'ml-popup-pro' );
+	}
 
-		// If invalid/revoked/expired, scrub details so the previous license
-		// doesn't leak across reinstalls.
-		if ( in_array( $status, [ self::STATUS_INVALID, self::STATUS_REVOKED, self::STATUS_EXPIRED ], true ) ) {
-			delete_option( self::OPTION_DETAILS );
+	public static function locked_notice(): void {
+		if ( ! current_user_can( 'manage_options' ) || ! self::is_plugin_screen() || ! self::is_locked() ) {
+			return;
 		}
+		printf(
+			'<div class="notice notice-warning"><p><strong>ML Popup Pro:</strong> %s <a href="%s">%s</a></p></div>',
+			esc_html__( 'sem licença ativa — o painel está só para leitura. Os popups publicados continuam aparecendo no site.', 'ml-popup-pro' ),
+			esc_url( admin_url( self::TAB_URL ) ),
+			esc_html__( 'Ativar licença', 'ml-popup-pro' )
+		);
+	}
 
-		return [
-			'ok'      => false,
-			'status'  => $status,
-			'message' => $verification['message'] ?? 'Serial rejeitado pela hub.',
+	private static function is_plugin_screen(): bool {
+		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( (string) $_GET['page'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification
+		return 'ml-popup-pro' === $page || 0 === strpos( $page, 'mlpp-' );
+	}
+
+	/* ------------------------------------------------------------------ tela */
+
+	/** Estado pronto para a aba Licença. */
+	public static function summary(): array {
+		$state  = self::client()->state();
+		$active = ! empty( $state['active'] );
+		$mode   = (string) ( $state['mode'] ?? 'none' );
+		$plan   = strtolower( (string) ( $state['plan'] ?? '' ) );
+		$days   = $state['days_left'] ?? null;
+
+		$plans = [
+			'trial'    => 'Teste grátis',
+			'monthly'  => 'Mensal',
+			'annual'   => 'Anual',
+			'yearly'   => 'Anual',
+			'lifetime' => 'Vitalícia',
+			'manual'   => 'Cortesia',
+			'courtesy' => 'Cortesia',
 		];
-	}
+		$plan_label = $plans[ $plan ] ?? ( '' !== $plan ? ucfirst( $plan ) : '—' );
 
-	public static function deactivate(): void {
-		delete_option( self::OPTION_KEY );
-		delete_option( self::OPTION_STATUS );
-		delete_option( self::OPTION_DETAILS );
-		delete_option( self::OPTION_CACHE );
-	}
-
-	/**
-	 * Validate a key against the hub. Honours the cache (CACHE_TTL) when
-	 * not forced; serial changes bypass the cache automatically.
-	 *
-	 * @return array{ok:bool,status:string,message:string,details?:array,raw?:array}
-	 */
-	public static function verify_remote( string $key, bool $force = false ): array {
-		$key = trim( $key );
-		if ( '' === $key ) {
-			return [ 'ok' => false, 'status' => self::STATUS_INVALID, 'message' => 'Serial vazio.' ];
-		}
-
-		$cached = get_option( self::OPTION_CACHE, null );
-		$stored_key = (string) get_option( self::OPTION_KEY, '' );
-		if ( ! $force && is_array( $cached ) && isset( $cached['checked_key'], $cached['expires_at'] ) ) {
-			if ( (string) $cached['checked_key'] === $key && (int) $cached['expires_at'] > time() ) {
-				return $cached;
+		if ( $active && 'trial' === $mode ) {
+			$label   = 'Teste';
+			$tone    = 'trial';
+			$message = null === $days
+				? 'Teste grátis ativo neste site.'
+				: sprintf( 1 === (int) $days ? 'Teste grátis ativo: falta %d dia.' : 'Teste grátis ativo: faltam %d dias.', (int) $days );
+		} elseif ( $active ) {
+			$label   = 'Ativa';
+			$tone    = 'full';
+			$message = 'Licença ativa neste site.';
+		} else {
+			$label = 'Sem licença';
+			$tone  = 'free';
+			if ( 'trial_expired' === ( $state['status'] ?? '' ) ) {
+				$message = 'O teste grátis terminou. Ative uma licença para voltar a criar e editar popups. Os popups publicados continuam aparecendo no site.';
+			} elseif ( '' !== (string) ( $state['message'] ?? '' ) ) {
+				$message = (string) $state['message'];
+			} else {
+				$message = 'Comece o teste grátis de 30 dias ou ative a sua licença.';
 			}
 		}
 
-		$server   = self::server_url();
-		$product  = self::product_id();
-		$domain   = self::current_domain();
-		$site_url = self::current_site_url();
-
-		$response = wp_remote_post(
-			$server,
-			[
-				'timeout'   => self::API_TIMEOUT,
-				'sslverify' => true,
-				'headers'   => [
-					'Accept'     => 'application/json',
-					'User-Agent' => 'ML-Popup-Pro-Updater/' . MLPP_VERSION . ' (' . $domain . ')',
-				],
-				'body'      => [
-					'action'      => 'validate_license',
-					'product_id'  => $product,
-					'license_key' => $key,
-					'domain'      => $domain,
-					'site_url'    => $site_url,
-					'version'     => MLPP_VERSION,
-				],
-			]
-		);
-
-		if ( is_wp_error( $response ) ) {
-			return [
-				'ok'         => false,
-				'status'     => self::STATUS_UNREACH,
-				'message'    => 'Não foi possível contactar o servidor de licença: ' . $response->get_error_message(),
-				'checked_at' => time(),
-				'expires_at' => time() + 600, // back-off 10min before retrying
-			];
+		$expires_label = '';
+		if ( ! empty( $state['expires_at'] ) ) {
+			$ts = strtotime( (string) $state['expires_at'] );
+			if ( $ts ) {
+				$expires_label = wp_date( 'd/m/Y', $ts );
+			}
+		}
+		if ( ! $active ) {
+			$valid_until = '—';
+		} elseif ( 'lifetime' === $plan || '' === $expires_label ) {
+			$valid_until = 'Sem vencimento';
+		} else {
+			$valid_until = $expires_label;
 		}
 
-		$code = (int) wp_remote_retrieve_response_code( $response );
-		$body = json_decode( (string) wp_remote_retrieve_body( $response ), true );
-
-		if ( 200 !== $code || ! is_array( $body ) ) {
-			return [
-				'ok'         => false,
-				'status'     => self::STATUS_UNREACH,
-				'message'    => 'Servidor de licença respondeu HTTP ' . $code . '.',
-				'checked_at' => time(),
-				'expires_at' => time() + 600,
-			];
-		}
-
-		$status = self::map_status( (string) ( $body['status'] ?? '' ) );
-		$valid  = self::STATUS_VALID === $status;
-
-		$out = [
-			'ok'         => $valid,
-			'status'     => $status,
-			'message'    => (string) ( $body['message'] ?? '' ),
-			'details'    => [
-				'plan'       => (string) ( $body['plan']       ?? 'pro' ),
-				'domain'     => (string) ( $body['domain']     ?? $domain ),
-				'expires_at' => (string) ( $body['expires_at'] ?? '' ),
-				'channel'    => 'hub',
-			],
-			'raw'        => $body,
-			'checked_key' => $key,
-			'checked_at' => time(),
-			'expires_at' => time() + self::CACHE_TTL,
+		return [
+			'active'          => $active,
+			'mode'            => $mode,
+			'is_trial'        => $active && 'trial' === $mode,
+			'label'           => $label,
+			'tone'            => $tone,
+			'message'         => $message,
+			'plan_label'      => $plan_label,
+			'valid_until'     => $valid_until,
+			'days_left'       => ( $active && null !== $days && '' !== $expires_label ) ? (string) (int) $days : '—',
+			'key_masked'      => (string) ( $state['key_masked'] ?? '' ),
+			'can_start_trial' => ! $active && empty( $state['trial_used'] ) && 'license' !== $mode,
+			'domain'          => (string) wp_parse_url( home_url(), PHP_URL_HOST ),
 		];
-
-		if ( ! $valid ) {
-			// Use a shorter retry window for known permanent failures.
-			$out['expires_at'] = time() + 900;
-		}
-
-		return $out;
 	}
 
-	/** Maps the hub's free-form status field to a stable internal value. */
-	private static function map_status( string $hub_status ): string {
-		$hub_status = strtolower( trim( $hub_status ) );
-		switch ( $hub_status ) {
-			case 'active':
-				return self::STATUS_VALID;
-			case 'expired':
-				return self::STATUS_EXPIRED;
-			case 'suspended':
-			case 'cancelled':
-			case 'revoked':
-			case 'deleted':
-				return self::STATUS_REVOKED;
-			case 'not_found':
-			case 'unknown_product':
-			case 'bad_request':
-			case 'invalid_action':
-			case 'domain_mismatch':
-				return self::STATUS_INVALID;
-			default:
-				return self::STATUS_INVALID;
-		}
-	}
-
-	/** Returns the hub endpoint URL, overridable via `mlpp_license_server` filter. */
-	public static function server_url(): string {
-		$constant = defined( 'MLPP_LICENSE_SERVER' ) ? (string) MLPP_LICENSE_SERVER : '';
-		$url      = $constant !== '' ? $constant : self::DEFAULT_SERVER;
-		/**
-		 * Filters the license hub endpoint URL.
-		 *
-		 * @param string $url  Hub endpoint, default https://license.mlopesdesign.com.br/api/license.php
-		 */
-		return (string) apply_filters( 'mlpp_license_server', $url );
-	}
-
-	/** Returns the product slug registered with the hub for this plugin. */
-	public static function product_id(): string {
-		$opt     = (string) get_option( self::OPTION_PRODUCT, '' );
-		$product = $opt !== '' ? $opt : self::DEFAULT_PRODUCT;
-		/**
-		 * Filters the product_id sent to the hub (must match the slug
-		 * registered in the hub admin under "Produtos").
-		 *
-		 * @param string $product  Default `ml-popup-pro`.
-		 */
-		return (string) apply_filters( 'mlpp_license_product_id', $product );
-	}
-
-	private static function current_domain(): string {
-		$host = isset( $_SERVER['HTTP_HOST'] ) ? (string) $_SERVER['HTTP_HOST'] : (string) home_url();
-		return strtolower( trim( preg_replace( '#^https?://#', '', $host ) ) );
-	}
-
-	private static function current_site_url(): string {
-		return (string) home_url( '/' );
-	}
-
-	/** Human-readable status for the UI. */
+	/** Rótulo curto para o selo da aba. */
 	public static function status_label(): string {
-		if ( self::is_premium() ) {
-			return 'Pro ativa';
-		}
-		$status = (string) get_option( self::OPTION_STATUS, self::STATUS_FREE );
-		switch ( $status ) {
-			case self::STATUS_VALID:    return 'Pro ativa';
-			case self::STATUS_EXPIRED:  return 'Pro expirada';
-			case self::STATUS_REVOKED:  return 'Pro revogada';
-			case self::STATUS_PENDING:  return 'Verificação pendente';
-			case self::STATUS_UNREACH:  return 'Hub indisponível';
-			case self::STATUS_INVALID:  return 'Serial inválido';
-			default:                    return 'Free';
-		}
+		return self::summary()['label'];
 	}
 
-	/** Returns the last verification result (from cache) for the diagnostic card. */
-	public static function last_verification(): array {
-		$cached = get_option( self::OPTION_CACHE, [] );
-		return is_array( $cached ) ? $cached : [];
+	/* ------------------------------------------------------------------ ações */
+
+	public static function handle_activate(): void {
+		self::guard_admin_request( 'mlpp_activate_license' );
+		$key    = isset( $_POST['license_key'] ) ? sanitize_text_field( wp_unslash( (string) $_POST['license_key'] ) ) : '';
+		$result = self::client()->activate( $key );
+		if ( is_wp_error( $result ) ) {
+			self::redirect_with_toast( $result->get_error_message(), 'error' );
+		}
+		self::redirect_with_toast( __( 'Licença ativada neste site.', 'ml-popup-pro' ), 'success' );
+	}
+
+	/** Começa o teste grátis ou confere a licença agora. */
+	public static function handle_sync(): void {
+		self::guard_admin_request( 'mlpp_sync_license' );
+		$op     = isset( $_POST['mlpp_op'] ) ? sanitize_key( wp_unslash( (string) $_POST['mlpp_op'] ) ) : 'check';
+		$result = 'trial' === $op ? self::client()->start_trial() : self::client()->refresh();
+		if ( is_wp_error( $result ) ) {
+			self::redirect_with_toast( $result->get_error_message(), 'error' );
+		}
+		self::redirect_with_toast(
+			'trial' === $op ? __( 'Teste grátis de 30 dias ativo neste site.', 'ml-popup-pro' ) : __( 'Licença conferida.', 'ml-popup-pro' ),
+			'success'
+		);
+	}
+
+	public static function handle_remove(): void {
+		self::guard_admin_request( 'mlpp_remove_license' );
+		self::client()->deactivate();
+		self::redirect_with_toast( __( 'Licença removida deste site. A chave pode ser usada em outro site.', 'ml-popup-pro' ), 'success' );
+	}
+
+	private static function guard_admin_request( string $nonce_action ): void {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'Permissão insuficiente.', 'ml-popup-pro' ) );
+		}
+		check_admin_referer( $nonce_action );
+	}
+
+	private static function redirect_with_toast( string $message, string $type ): void {
+		wp_safe_redirect(
+			add_query_arg(
+				[
+					'mlpp_toast'      => rawurlencode( $message ),
+					'mlpp_toast_type' => $type,
+				],
+				admin_url( self::TAB_URL )
+			)
+		);
+		exit;
 	}
 }
 
 /**
- * Convenience helper: true when Pro is active. Use this in views and
- * runtime gates instead of calling MLPP_License::is_premium() directly.
+ * Atalho: true quando há teste grátis ou licença válidos neste site.
  */
 function mlpp_is_premium(): bool {
 	return MLPP_License::is_premium();

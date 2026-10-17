@@ -41,8 +41,10 @@ final class MLPP_Admin {
 		add_action( 'wp_ajax_mlpp_clear_stats',      [ $this, 'ajax_clear_stats' ] );
 		add_action( 'wp_ajax_mlpp_reset_frequency',  [ $this, 'ajax_reset_frequency' ] );
 		add_action( 'wp_ajax_mlpp_clear_update_cache', [ $this, 'ajax_clear_update_cache' ] );
-		add_action( 'admin_post_mlpp_activate_license',   [ $this, 'handle_activate_license' ] );
-		add_action( 'admin_post_mlpp_deactivate_license', [ $this, 'handle_deactivate_license' ] );
+		// 1.6.0: licença pelo ML License Hub (tools.mlopesdesign.com.br).
+		add_action( 'admin_post_mlpp_activate_license', [ 'MLPP_License', 'handle_activate' ] );
+		add_action( 'admin_post_mlpp_sync_license',     [ 'MLPP_License', 'handle_sync' ] );
+		add_action( 'admin_post_mlpp_remove_license',   [ 'MLPP_License', 'handle_remove' ] );
 		add_action( 'admin_post_mlpp_save_brand',         [ $this, 'handle_save_brand' ] );
 
 		// WP Consent API integration (LGPD / GDPR).
@@ -98,6 +100,38 @@ final class MLPP_Admin {
 		}
 	}
 
+
+	/**
+	 * Grava uma linha no histórico (tabela wp_mlpp_audit). handle_save_popup() e
+	 * handle_delete_popup() já chamavam este método, mas ele não existia (erro fatal
+	 * depois de salvar/excluir um popup). Nunca lança exceção: falha só vai para o log.
+	 *
+	 * @since 1.6.0
+	 */
+	public static function record_audit( string $action, int $popup_id, array $meta = [] ): void {
+		try {
+			global $wpdb;
+			if ( ! isset( $wpdb ) || ! is_object( $wpdb ) ) {
+				return;
+			}
+			$user = function_exists( 'wp_get_current_user' ) ? wp_get_current_user() : null;
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery
+			$wpdb->insert(
+				$wpdb->prefix . 'mlpp_audit',
+				[
+					'popup_id'   => max( 0, $popup_id ),
+					'user_id'    => $user ? (int) $user->ID : 0,
+					'user_login' => $user ? substr( (string) $user->user_login, 0, 60 ) : '',
+					'action'     => substr( sanitize_key( $action ), 0, 20 ),
+					'meta'       => (string) wp_json_encode( $meta ),
+					'created_at' => current_time( 'mysql' ),
+				],
+				[ '%d', '%d', '%s', '%s', '%s', '%s' ]
+			);
+		} catch ( \Throwable $e ) {
+			error_log( '[ml-popup-pro] record_audit failed: ' . $e->getMessage() );
+		}
+	}
 
 	public function render_admin_nav(): void {
 		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( (string) $_GET['page'] ) ) : 'ml-popup-pro';
@@ -236,40 +270,15 @@ final class MLPP_Admin {
 		$brand          = get_option( 'mlpp_brand', [] );
 		$updater        = new MLPP_Updater();
 		$updater_status = $updater->get_status();
-		$license_status = MLPP_License::status_label();
-		$license_key    = (string) get_option( MLPP_License::OPTION_KEY, '' );
-		$license_details = get_option( MLPP_License::OPTION_DETAILS, [] );
+		$license        = MLPP_License::summary();
+		$license_status = $license['label'];
 		$toast          = $this->get_toast();
 		require MLPP_PLUGIN_DIR . 'admin/views/settings.php';
 	}
 
-	public function handle_activate_license(): void {
-		MLPP_Security::check_admin();
-		MLPP_Security::verify_nonce( 'mlpp_activate_license' );
-		$raw   = isset( $_POST['mlpp_license_key'] ) ? sanitize_text_field( wp_unslash( (string) $_POST['mlpp_license_key'] ) ) : '';
-		$force = ! empty( $_POST['mlpp_force_recheck'] );
-		$res   = MLPP_License::activate( $raw, $force );
-		$type  = $res['ok'] ? 'success' : 'error';
-		$this->redirect_with_toast(
-			admin_url( 'admin.php?page=mlpp-settings&tab=cfg-activation' ),
-			$res['message'],
-			$type
-		);
-	}
-
-	public function handle_deactivate_license(): void {
-		MLPP_Security::check_admin();
-		MLPP_Security::verify_nonce( 'mlpp_deactivate_license' );
-		MLPP_License::deactivate();
-		$this->redirect_with_toast(
-			admin_url( 'admin.php?page=mlpp-settings&tab=cfg-activation' ),
-			'Licença desativada. Voltando para Free.',
-			'success'
-		);
-	}
-
 	public function handle_save_brand(): void {
 		MLPP_Security::check_admin();
+		MLPP_License::guard_write();
 		MLPP_Security::verify_nonce( 'mlpp_save_brand' );
 		$raw   = isset( $_POST['mlpp_brand'] ) ? wp_unslash( (array) $_POST['mlpp_brand'] ) : [];
 		$clean = [
@@ -287,6 +296,7 @@ final class MLPP_Admin {
 
 	public function handle_save_popup(): void {
 		MLPP_Security::check_admin();
+		MLPP_License::guard_write();
 		MLPP_Security::verify_nonce( 'mlpp_save_popup' );
 		$raw      = isset( $_POST['mlpp_popup'] ) ? wp_unslash( (array) $_POST['mlpp_popup'] ) : [];
 		$data     = MLPP_Security::sanitize_popup( $raw );
@@ -325,6 +335,7 @@ final class MLPP_Admin {
 
 	public function handle_delete_popup(): void {
 		MLPP_Security::check_admin();
+		MLPP_License::guard_write();
 		MLPP_Security::verify_nonce( 'mlpp_delete_popup' );
 		$id = absint( $_POST['popup_id'] ?? 0 );
 		if ( $id ) {
@@ -350,6 +361,7 @@ final class MLPP_Admin {
 
 	public function handle_save_settings(): void {
 		MLPP_Security::check_admin();
+		MLPP_License::guard_write();
 		MLPP_Security::verify_nonce( 'mlpp_save_settings' );
 		$raw = isset( $_POST['mlpp_settings'] ) ? wp_unslash( (array) $_POST['mlpp_settings'] ) : [];
 		update_option( 'mlpp_settings', MLPP_Security::sanitize_settings( $raw ), false );
@@ -368,6 +380,7 @@ final class MLPP_Admin {
 
 	public function handle_import(): void {
 		MLPP_Security::check_admin();
+		MLPP_License::guard_write();
 		MLPP_Security::verify_nonce( 'mlpp_import_popups' );
 		if ( empty( $_FILES['mlpp_import_file']['tmp_name'] ) ) {
 			$this->redirect_with_toast( admin_url( 'admin.php?page=mlpp-settings' ), 'Nenhum arquivo enviado.', 'error' );
@@ -389,6 +402,7 @@ final class MLPP_Admin {
 
 	public function ajax_clear_stats(): void {
 		MLPP_Security::check_admin();
+		MLPP_License::guard_write( true );
 		check_ajax_referer( 'mlpp_admin_nonce', 'nonce' );
 		$popup_id = absint( $_POST['popup_id'] ?? 0 );
 		if ( ! $popup_id ) wp_send_json_error( 'invalid' );

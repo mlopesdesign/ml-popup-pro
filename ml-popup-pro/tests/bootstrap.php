@@ -69,3 +69,6 @@ require_once MLPP_PLUGIN_DIR . 'includes/class-mlpp-admin.php';
 require_once MLPP_PLUGIN_DIR . 'includes/class-mlpp-frontend.php';
 require_once MLPP_PLUGIN_DIR . 'includes/class-mlpp-templates.php';
 require_once MLPP_PLUGIN_DIR . 'includes/class-mlpp-gates.php';
+
+// 1.6.0: tokens assinados como o ML License Hub emitiria (só nos testes).
+require_once __DIR__ . '/support/HubToken.php';

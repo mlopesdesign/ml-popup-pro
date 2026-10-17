@@ -3,15 +3,40 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 /** @var array $settings @var array $toast */
-function mlpp_sval( array $settings, string $key, string $default = '' ): string {
-	return esc_attr( $settings[ $key ] ?? $default );
+if ( ! function_exists( 'mlpp_sval' ) ) {
+	function mlpp_sval( array $settings, string $key, string $default = '' ): string {
+		return esc_attr( $settings[ $key ] ?? $default );
+	}
 }
-function mlpp_ssel( array $settings, string $key, string $value ): string {
-	return ( $settings[ $key ] ?? '' ) === $value ? 'selected' : '';
+if ( ! function_exists( 'mlpp_ssel' ) ) {
+	function mlpp_ssel( array $settings, string $key, string $value ): string {
+		return ( $settings[ $key ] ?? '' ) === $value ? 'selected' : '';
+	}
 }
-function mlpp_schk( array $settings, string $key ): string {
-	return ! empty( $settings[ $key ] ) && $settings[ $key ] === '1' ? 'checked' : '';
+if ( ! function_exists( 'mlpp_schk' ) ) {
+	function mlpp_schk( array $settings, string $key ): string {
+		return ! empty( $settings[ $key ] ) && $settings[ $key ] === '1' ? 'checked' : '';
+	}
 }
+// Aba aberta ao carregar (?tab=cfg-activation etc.) — os links para a aba Licença dependem disso.
+$mlpp_tabs       = [ 'cfg-global', 'cfg-brand', 'cfg-io', 'cfg-updater', 'cfg-activation' ];
+$mlpp_active_tab = isset( $_GET['tab'] ) ? sanitize_key( wp_unslash( (string) $_GET['tab'] ) ) : 'cfg-global'; // phpcs:ignore WordPress.Security.NonceVerification
+if ( ! in_array( $mlpp_active_tab, $mlpp_tabs, true ) ) {
+	$mlpp_active_tab = 'cfg-global';
+}
+$mlpp_btn   = static function ( string $tab ) use ( $mlpp_active_tab ): string {
+	return $tab === $mlpp_active_tab ? 'mlpp-tab-btn is-active' : 'mlpp-tab-btn';
+};
+$mlpp_panel = static function ( string $tab ) use ( $mlpp_active_tab ): string {
+	return $tab === $mlpp_active_tab ? 'class="mlpp-tab-panel is-active"' : 'class="mlpp-tab-panel" hidden';
+};
+/** @var array $license Resumo vindo de MLPP_License::summary(). */
+$mlpp_lic_chip = [
+	'full'  => 'background:#d1fae5;color:#065f46',
+	'trial' => 'background:#dbeafe;color:#1e40af',
+	'free'  => 'background:#fef3c7;color:#92400e',
+];
+$mlpp_lic_style = $mlpp_lic_chip[ $license['tone'] ] ?? $mlpp_lic_chip['free'];
 ?>
 <div class="mlpp-wrap mlpp-admin-wrap" data-toast-message="<?php echo esc_attr( $toast['message'] ); ?>" data-toast-type="<?php echo esc_attr( $toast['type'] ); ?>">
 	<div id="mlpp-toast-area" aria-live="polite" aria-atomic="true"></div>
@@ -29,11 +54,11 @@ function mlpp_schk( array $settings, string $key ): string {
 	</section>
 
 	<nav class="mlpp-tabs">
-		<button type="button" class="mlpp-tab-btn is-active" data-tab="mlpp-tab-cfg-global"><?php echo esc_html__( 'Global', 'ml-popup-pro' ); ?></button>
-		<button type="button" class="mlpp-tab-btn" data-tab="mlpp-tab-cfg-brand"><?php echo esc_html__( '🎨 Identidade', 'ml-popup-pro' ); ?></button>
-		<button type="button" class="mlpp-tab-btn" data-tab="mlpp-tab-cfg-io"><?php echo esc_html__( 'Import / Export', 'ml-popup-pro' ); ?></button>
-		<button type="button" class="mlpp-tab-btn" data-tab="mlpp-tab-cfg-updater"><?php echo esc_html__( '🔄 Atualizações', 'ml-popup-pro' ); ?></button>
-		<button type="button" class="mlpp-tab-btn" data-tab="mlpp-tab-cfg-activation"><?php echo esc_html__( '🔑 Ativação', 'ml-popup-pro' ); ?> <span class="mlpp-chip" style="background:#fef3c7;color:#92400e;font-size:10px;margin-left:4px"><?php echo esc_html( $license_status ?? __( 'Free', 'ml-popup-pro' ) ); ?></span></button>
+		<button type="button" class="<?php echo esc_attr( $mlpp_btn( 'cfg-global' ) ); ?>" data-tab="mlpp-tab-cfg-global"><?php echo esc_html__( 'Global', 'ml-popup-pro' ); ?></button>
+		<button type="button" class="<?php echo esc_attr( $mlpp_btn( 'cfg-brand' ) ); ?>" data-tab="mlpp-tab-cfg-brand"><?php echo esc_html__( '🎨 Identidade', 'ml-popup-pro' ); ?></button>
+		<button type="button" class="<?php echo esc_attr( $mlpp_btn( 'cfg-io' ) ); ?>" data-tab="mlpp-tab-cfg-io"><?php echo esc_html__( 'Import / Export', 'ml-popup-pro' ); ?></button>
+		<button type="button" class="<?php echo esc_attr( $mlpp_btn( 'cfg-updater' ) ); ?>" data-tab="mlpp-tab-cfg-updater"><?php echo esc_html__( '🔄 Atualizações', 'ml-popup-pro' ); ?></button>
+		<button type="button" class="<?php echo esc_attr( $mlpp_btn( 'cfg-activation' ) ); ?>" data-tab="mlpp-tab-cfg-activation"><?php echo esc_html__( '🔑 Licença', 'ml-popup-pro' ); ?> <span class="mlpp-chip" style="<?php echo esc_attr( $mlpp_lic_style ); ?>;font-size:10px;margin-left:4px"><?php echo esc_html( $license['label'] ); ?></span></button>
 	</nav>
 
 	<style>
@@ -45,7 +70,7 @@ function mlpp_schk( array $settings, string $key ): string {
 	</style>
 
 	<!-- TAB GLOBAL -->
-	<section id="mlpp-tab-cfg-global" class="mlpp-tab-panel is-active">
+	<section id="mlpp-tab-cfg-global" <?php echo $mlpp_panel( 'cfg-global' ); // phpcs:ignore ?>>
 		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
 			<?php wp_nonce_field( 'mlpp_save_settings' ); ?>
 			<input type="hidden" name="action" value="mlpp_save_settings">
@@ -91,7 +116,7 @@ function mlpp_schk( array $settings, string $key ): string {
 	</section>
 
 	<!-- TAB IMPORT/EXPORT -->
-	<section id="mlpp-tab-cfg-io" class="mlpp-tab-panel" hidden>
+	<section id="mlpp-tab-cfg-io" <?php echo $mlpp_panel( 'cfg-io' ); // phpcs:ignore ?>>
 		<div class="mlpp-grid-2">
 			<article class="mlpp-card">
 				<div class="mlpp-card-header"><div><h2>Exportar Popups</h2><p class="mlpp-hero-intro">Baixe todos os popups em JSON.</p></div></div>
@@ -121,7 +146,7 @@ function mlpp_schk( array $settings, string $key ): string {
 	</section>
 
 	<!-- TAB UPDATER -->
-	<section id="mlpp-tab-cfg-updater" class="mlpp-tab-panel" hidden>
+	<section id="mlpp-tab-cfg-updater" <?php echo $mlpp_panel( 'cfg-updater' ); // phpcs:ignore ?>>
 		<?php
 		$st       = $updater_status ?? [];
 		$installed    = esc_html( $st['installed']      ?? MLPP_VERSION );
@@ -220,7 +245,7 @@ function mlpp_schk( array $settings, string $key ): string {
 	</section>
 
 	<!-- TAB IDENTIDADE VISUAL -->
-	<section id="mlpp-tab-cfg-brand" class="mlpp-tab-panel" hidden>
+	<section id="mlpp-tab-cfg-brand" <?php echo $mlpp_panel( 'cfg-brand' ); // phpcs:ignore ?>>
 		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
 			<?php wp_nonce_field( 'mlpp_save_brand' ); ?>
 			<input type="hidden" name="action" value="mlpp_save_brand">
@@ -248,87 +273,93 @@ function mlpp_schk( array $settings, string $key ): string {
 		</form>
 	</section>
 
-	<!-- TAB ATIVAÇÃO -->
-	<section id="mlpp-tab-cfg-activation" class="mlpp-tab-panel" hidden>
-		<article class="mlpp-card">
-			<div class="mlpp-card-header">
-				<div>
-					<h2>🔑 Ativação</h2>
-					<p class="mlpp-hero-intro">Libera os recursos Pro do ML Popup Pro. O plugin funciona Free sem serial; Pro adiciona A/B testing, goal tracking, mais templates e filtros avançados de analytics.</p>
-				</div>
-				<div>
-					<span class="mlpp-chip" style="background:<?php echo mlpp_is_premium() ? '#d1fae5;color:#065f46' : '#fef9c3;color:#854d0e' ?>;font-size:12px;font-weight:700">
-						Status: <?php echo esc_html( $license_status ); ?>
-					</span>
-				</div>
-			</div>
+	<!-- TAB LICENÇA (1.6.0: ML License Hub — tools.mlopesdesign.com.br) -->
+	<section id="mlpp-tab-cfg-activation" <?php echo $mlpp_panel( 'cfg-activation' ); // phpcs:ignore ?>>
+		<?php $mlpp_post = esc_url( admin_url( 'admin-post.php' ) ); ?>
+		<div class="mlpp-stat-grid" style="margin-bottom:18px">
+			<article class="mlpp-stat-card"><span class="mlpp-stat-label">Situação</span><strong><?php echo esc_html( $license['label'] ); ?></strong></article>
+			<article class="mlpp-stat-card"><span class="mlpp-stat-label">Plano</span><strong><?php echo esc_html( $license['plan_label'] ); ?></strong></article>
+			<article class="mlpp-stat-card"><span class="mlpp-stat-label">Válida até</span><strong><?php echo esc_html( $license['valid_until'] ); ?></strong></article>
+			<article class="mlpp-stat-card"><span class="mlpp-stat-label">Dias restantes</span><strong><?php echo esc_html( $license['days_left'] ); ?></strong></article>
+		</div>
 
-			<?php if ( mlpp_is_premium() ) : ?>
-				<?php
-					$details = is_array( $license_details ) ? $license_details : [];
-					$last    = MLPP_License::last_verification();
-				?>
-				<div class="mlpp-note" style="margin-bottom:16px">
-					<strong>Plano:</strong> <?php echo esc_html( $details['plan']    ?? 'Pro' ); ?><br>
-					<strong>Dominio autorizado:</strong> <?php echo esc_html( $details['domain'] ?? '—' ); ?><br>
-					<strong>Expira em:</strong> <?php echo esc_html( $details['expires_at'] ?? '—' ); ?><br>
-					<strong>Servidor:</strong> <code><?php echo esc_html( MLPP_License::server_url() ); ?></code><br>
-					<strong>Produto:</strong> <code><?php echo esc_html( MLPP_License::product_id() ); ?></code><br>
-					<?php if ( ! empty( $last['checked_at'] ) ) : ?>
-						<strong>Ultima verificacao:</strong> <?php echo esc_html( wp_date( 'd/m/Y H:i', (int) $last['checked_at'] ) ); ?>
-					<?php endif; ?>
+		<div class="mlpp-grid-2" style="align-items:start">
+			<article class="mlpp-card">
+				<div class="mlpp-card-header">
+					<div>
+						<h2>🔑 Licença</h2>
+						<p class="mlpp-hero-intro"><?php echo esc_html( $license['message'] ); ?></p>
+					</div>
+					<div>
+						<span class="mlpp-chip" style="<?php echo esc_attr( $mlpp_lic_style ); ?>;font-size:12px;font-weight:700"><?php echo esc_html( $license['domain'] ); ?></span>
+					</div>
 				</div>
-				<div class="mlpp-actions" style="display:flex;gap:10px">
-					<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="display:inline">
+
+				<?php if ( 'license' === $license['mode'] && '' !== $license['key_masked'] ) : ?>
+					<div class="mlpp-note" style="margin-bottom:16px">
+						<strong>Chave neste site:</strong> <code><?php echo esc_html( $license['key_masked'] ); ?></code>
+					</div>
+					<div class="mlpp-actions" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+						<form method="post" action="<?php echo $mlpp_post; // phpcs:ignore ?>" style="display:inline">
+							<?php wp_nonce_field( 'mlpp_sync_license' ); ?>
+							<input type="hidden" name="action" value="mlpp_sync_license">
+							<input type="hidden" name="mlpp_op" value="check">
+							<button type="submit" class="button button-primary mlpp-btn">🔄 Conferir agora</button>
+						</form>
+						<form method="post" action="<?php echo $mlpp_post; // phpcs:ignore ?>" style="display:inline" onsubmit="return confirm('Remover a licença deste site? A chave poderá ser usada em outro site.');">
+							<?php wp_nonce_field( 'mlpp_remove_license' ); ?>
+							<input type="hidden" name="action" value="mlpp_remove_license">
+							<button type="submit" class="mlpp-btn-secondary">Remover deste site</button>
+						</form>
+						<a class="mlpp-btn-secondary" href="<?php echo esc_url( MLPP_License::ACCOUNT_URL ); ?>" target="_blank" rel="noopener">Minha conta</a>
+					</div>
+				<?php else : ?>
+					<form method="post" action="<?php echo $mlpp_post; // phpcs:ignore ?>">
 						<?php wp_nonce_field( 'mlpp_activate_license' ); ?>
 						<input type="hidden" name="action" value="mlpp_activate_license">
-						<input type="hidden" name="mlpp_license_key" value="<?php echo esc_attr( (string) get_option( MLPP_License::OPTION_KEY, '' ) ); ?>">
-						<input type="hidden" name="mlpp_force_recheck" value="1">
-						<button type="submit" class="mlpp-btn-secondary">🔄 Reverificar agora</button>
+						<div class="mlpp-field">
+							<label for="mlpp_license_key">Chave da licença</label>
+							<input type="text" id="mlpp_license_key" name="license_key" value="" placeholder="Cole aqui a sua chave" autocomplete="off" spellcheck="false" style="font-family:monospace;letter-spacing:1px">
+							<p class="description">Você recebe a chave por e-mail depois da compra e também a encontra em Minha conta.</p>
+						</div>
+						<div class="mlpp-actions" style="margin-top:14px">
+							<button type="submit" class="button button-primary mlpp-btn">Ativar licença</button>
+						</div>
 					</form>
-					<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="display:inline" onsubmit="return confirm('Desativar a licenca Pro? O plugin volta para Free.');">
-						<?php wp_nonce_field( 'mlpp_deactivate_license' ); ?>
-						<input type="hidden" name="action" value="mlpp_deactivate_license">
-						<button type="submit" class="mlpp-btn-secondary">Desativar licenca</button>
-					</form>
-				</div>
-			<?php else : ?>
-				<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
-					<?php wp_nonce_field( 'mlpp_activate_license' ); ?>
-					<input type="hidden" name="action" value="mlpp_activate_license">
-					<div class="mlpp-field">
-						<label for="mlpp_license_key">Serial Pro</label>
-						<input type="text" id="mlpp_license_key" name="mlpp_license_key" value="<?php echo esc_attr( $license_key ); ?>" placeholder="XXXX-XXXX-XXXX-XXXX" autocomplete="off" style="font-family:monospace;letter-spacing:1px">
-						<p class="description">Recebeu o serial após a compra. Cole aqui e clique em Ativar.</p>
+					<div class="mlpp-actions" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:14px">
+						<?php if ( $license['can_start_trial'] ) : ?>
+							<form method="post" action="<?php echo $mlpp_post; // phpcs:ignore ?>" style="display:inline">
+								<?php wp_nonce_field( 'mlpp_sync_license' ); ?>
+								<input type="hidden" name="action" value="mlpp_sync_license">
+								<input type="hidden" name="mlpp_op" value="trial">
+								<button type="submit" class="mlpp-btn-secondary">Começar teste grátis de 30 dias</button>
+							</form>
+						<?php elseif ( $license['is_trial'] ) : ?>
+							<form method="post" action="<?php echo $mlpp_post; // phpcs:ignore ?>" style="display:inline">
+								<?php wp_nonce_field( 'mlpp_sync_license' ); ?>
+								<input type="hidden" name="action" value="mlpp_sync_license">
+								<input type="hidden" name="mlpp_op" value="check">
+								<button type="submit" class="mlpp-btn-secondary">🔄 Conferir agora</button>
+							</form>
+						<?php endif; ?>
+						<a class="mlpp-btn-secondary" href="<?php echo esc_url( MLPP_License::BUY_URL ); ?>" target="_blank" rel="noopener">Comprar licença</a>
+						<a class="mlpp-btn-secondary" href="<?php echo esc_url( MLPP_License::ACCOUNT_URL ); ?>" target="_blank" rel="noopener">Minha conta</a>
 					</div>
-					<div class="mlpp-actions" style="margin-top:14px">
-						<button type="submit" class="button button-primary mlpp-btn">Ativar</button>
-					</div>
-				</form>
+				<?php endif; ?>
+			</article>
 
-				<hr style="margin:24px 0;border:none;border-top:1px solid var(--ml-line)">
-
-				<h3>Recursos Pro</h3>
-				<div class="mlpp-grid-2" style="gap:14px">
-					<article class="mlpp-stat-card"><strong>🆔 A/B testing</strong><small>Variantes por popup com split de tráfego e CTR por variante</small></article>
-					<article class="mlpp-stat-card"><strong>🎯 Goal tracking automático</strong><small>Disparar conversão por CSS selector (WooCommerce, formulários, etc)</small></article>
-					<article class="mlpp-stat-card"><strong>📊 Analytics avançado</strong><small>Filtros por período/popup/dispositivo e breakdown por device</small></article>
-					<article class="mlpp-stat-card"><strong>🎄 Templates sazonais</strong><small>Black Friday, Natal, Exit Survey, Free Shipping e mais</small></article>
-					<article class="mlpp-stat-card"><strong>🛡 Rate limiting</strong><small>Proteção da tabela de eventos contra flood/bots</small></article>
-					<article class="mlpp-stat-card"><strong>🪝 Hooks extensibilidade</strong><small>Filters para addons, integrações e customização sem fork</small></article>
-				</div>
-
-				<p class="mlpp-note" style="margin-top:18px">
-					<strong>Servidor de licença:</strong> <code><?php echo esc_html( MLPP_License::server_url() ); ?></code><br>
-					<strong>Produto:</strong> <code><?php echo esc_html( MLPP_License::product_id() ); ?></code><br>
-					O serial é validado remotamente contra a Hub central. Cadastre sua chave em
-					<a href="<?php echo esc_url( 'https://license.mlopesdesign.com.br/admin/' ); ?>" target="_blank" rel="noopener">license.mlopesdesign.com.br/admin</a>
-					antes de colar aqui — ela precisa estar com o produto
-					<code><?php echo esc_html( MLPP_License::product_id() ); ?></code>
-					cadastrado e o domínio <code><?php echo esc_html( wp_parse_url( home_url(), PHP_URL_HOST ) ); ?></code>
-					autorizado (ou licença sem domínio fixo).
-				</p>
-			<?php endif; ?>
-		</article>
+			<article class="mlpp-card">
+				<div class="mlpp-card-header"><div><h2>Como funciona</h2><p class="mlpp-hero-intro">Licenças pelo site tools.mlopesdesign.com.br</p></div></div>
+				<table class="mlpp-table" style="border-radius:14px;overflow:hidden;">
+					<tbody>
+						<tr><td style="width:150px"><strong>Teste grátis</strong></td><td>30 dias com tudo liberado, uma vez por site. Reinstalar não reinicia.</td></tr>
+						<tr><td><strong>Licença anual</strong></td><td>Vale em 1 site. Para usar em outro, remova deste site.</td></tr>
+						<tr><td><strong>Pacote Agência</strong></td><td>Uma chave para todos os plugins ML em 5, 10 ou 50 sites.</td></tr>
+						<tr><td><strong>Sem licença</strong></td><td>Os popups publicados continuam aparecendo no site e as estatísticas continuam sendo contadas. Só o painel fica bloqueado para criar, editar, apagar, importar e salvar configurações. Nada é apagado.</td></tr>
+					</tbody>
+				</table>
+				<p class="description" style="margin-top:12px">A licença é conferida uma vez por dia. Sem internet, o site continua liberado por até 7 dias.</p>
+			</article>
+		</div>
 	</section>
 </div>
